@@ -18,6 +18,7 @@ struct Token {
   struct Token *next; // 次の入力トークン
   int val;            // kindがTK_NUMの場合，その整数
   char *str;          // トークン文字列
+  int len;            // トークンの長さ
 };
 
 // ユーザの入力
@@ -51,8 +52,9 @@ void error_at(char *loc, char *fmt, ...) {
 
 // 次のトークンが期待している記号のときは，トークンを1個読み進めて
 // 真を返す．それ以外のときは偽を返す．
-bool consume(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op) {
+bool consume(char *op) {
+  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+      memcmp(op, token->str, token->len)) {
     return false;
   }
   token = token->next;
@@ -61,8 +63,9 @@ bool consume(char op) {
 
 // 次のトークンが期待している記号のときは，トークンを1個読み進める．
 // それ以外の場合はエラーを報告する．
-void expect(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op) {
+void expect(char *op) {
+  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+      memcmp(op, token->str, token->len)) {
     error_at(token->str, "'%c'ではありません", op);
   }
   token = token->next;
@@ -82,10 +85,11 @@ int expect_number() {
 bool at_eof() { return token->kind == TK_EOF; }
 
 // 新しいトークンを作成して，curにつなげる．
-struct Token *new_token(TokenKind kind, struct Token *cur, char *str) {
+struct Token *new_token(TokenKind kind, struct Token *cur, char *str, int len) {
   struct Token *tok = calloc(1, sizeof(struct Token));
   tok->kind = kind;
   tok->str = str;
+  tok->len = len;
   cur->next = tok;
   return tok;
 }
@@ -102,21 +106,30 @@ struct Token *tokenize() {
       continue;
     }
 
-    if (strchr("+-*/()", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++);
+    if (memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
+        memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0) {
+      cur = new_token(TK_RESERVED, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (strchr("+-*/()<>", *p)) {
+      cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
 
     if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p);
+      cur = new_token(TK_NUM, cur, p, 1);
+      char *old_p = p;
       cur->val = strtol(p, &p, 10);
+      cur->len = (int)(p - old_p);
       continue;
     }
 
     error_at(p, "トークナイズできません");
   }
 
-  new_token(TK_EOF, cur, p);
+  new_token(TK_EOF, cur, p, 0);
   return head.next;
 }
 
@@ -162,9 +175,9 @@ struct Node *expr() {
   struct Node *node = mul();
 
   for (;;) {
-    if (consume('+')) {
+    if (consume("+")) {
       node = new_node(ND_ADD, node, mul());
-    } else if (consume('-')) {
+    } else if (consume("-")) {
       node = new_node(ND_SUB, node, mul());
     } else {
       return node;
@@ -177,9 +190,9 @@ struct Node *mul() {
   struct Node *node = unary();
 
   for (;;) {
-    if (consume('*')) {
+    if (consume("*")) {
       node = new_node(ND_MUL, node, unary());
-    } else if (consume('/')) {
+    } else if (consume("/")) {
       node = new_node(ND_DIV, node, unary());
     } else {
       return node;
@@ -189,9 +202,9 @@ struct Node *mul() {
 
 // unary = ( "+" | "-" )? primary
 struct Node *unary() {
-  if (consume('+')) {
+  if (consume("+")) {
     return primary();
-  } else if (consume('-')) {
+  } else if (consume("-")) {
     return new_node(ND_SUB, new_node_num(0), primary());
   } else {
     return primary();
@@ -201,9 +214,9 @@ struct Node *unary() {
 // primary = num | "(" expr ")"
 struct Node *primary() {
   struct Node *node = NULL;
-  if (consume('(')) {
+  if (consume("(")) {
     node = expr();
-    expect(')');
+    expect(")");
   } else {
     node = new_node_num(expect_number());
   }
