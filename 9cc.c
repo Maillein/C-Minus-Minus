@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // トークンの種類
 typedef enum {
@@ -78,9 +79,7 @@ int expect_number() {
   return val;
 }
 
-bool at_eof() {
-  return token->kind == TK_EOF;
-}
+bool at_eof() { return token->kind == TK_EOF; }
 
 // 新しいトークンを作成して，curにつなげる．
 struct Token *new_token(TokenKind kind, struct Token *cur, char *str) {
@@ -103,7 +102,7 @@ struct Token *tokenize() {
       continue;
     }
 
-    if (*p == '+' || *p == '-') {
+    if (strchr("+-*/()", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
@@ -125,6 +124,8 @@ struct Token *tokenize() {
 typedef enum {
   ND_ADD, // +
   ND_SUB, // -
+  ND_MUL, // *
+  ND_DIV, // /
   ND_NUM, // 整数
 } NodeKind;
 
@@ -151,18 +152,50 @@ struct Node *new_node_num(int val) {
   return node;
 }
 
+struct Node *expr();
+struct Node *mul();
+struct Node *primary();
+
+// expr = mul ( "+" mul | "-" mul )*
 struct Node *expr() {
-  struct Node *node = new_node_num(expect_number());
+  struct Node *node = mul();
 
   for (;;) {
     if (consume('+')) {
-      node = new_node(ND_ADD, node, expr());
+      node = new_node(ND_ADD, node, mul());
     } else if (consume('-')) {
-      node = new_node(ND_SUB, node, expr());
+      node = new_node(ND_SUB, node, mul());
     } else {
       return node;
     }
   }
+}
+
+// mul = primary ( "*" primary | "/" primary )*
+struct Node *mul() {
+  struct Node *node = primary();
+
+  for (;;) {
+    if (consume('*')) {
+      node = new_node(ND_MUL, node, primary());
+    } else if (consume('/')) {
+      node = new_node(ND_DIV, node, primary());
+    } else {
+      return node;
+    }
+  }
+}
+
+// primary = num | "(" expr ")"
+struct Node *primary() {
+  struct Node *node = NULL;
+  if (consume('(')) {
+    node = expr();
+    expect(')');
+  } else {
+    node = new_node_num(expect_number());
+  }
+  return node;
 }
 
 void gen(struct Node *node) {
@@ -178,14 +211,21 @@ void gen(struct Node *node) {
   printf("  pop rax\n");
 
   switch (node->kind) {
-    case ND_ADD:
-      printf("  add rax, rdi\n");
-      break;
-    case ND_SUB:
-      printf("  sub rax, rdi\n");
-      break;
-    default:
-      break;
+  case ND_ADD:
+    printf("  add rax, rdi\n");
+    break;
+  case ND_SUB:
+    printf("  sub rax, rdi\n");
+    break;
+  case ND_MUL:
+    printf("  imul rax, rdi\n");
+    break;
+  case ND_DIV:
+    printf("  cqo\n");
+    printf("  idiv rax, rdi\n");
+    break;
+  default:
+    break;
   }
 
   printf("  push rax\n");
