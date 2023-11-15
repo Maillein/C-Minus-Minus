@@ -121,6 +121,76 @@ struct Token *tokenize() {
   return head.next;
 }
 
+// 抽象構文木のノードの種類
+typedef enum {
+  ND_ADD, // +
+  ND_SUB, // -
+  ND_NUM, // 整数
+} NodeKind;
+
+// 抽象構文木のノード型
+struct Node {
+  NodeKind kind;
+  struct Node *lhs;
+  struct Node *rhs;
+  int val;
+};
+
+struct Node *new_node(NodeKind kind, struct Node *lhs, struct Node *rhs) {
+  struct Node *node = calloc(1, sizeof(struct Node));
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+
+struct Node *new_node_num(int val) {
+  struct Node *node = calloc(1, sizeof(struct Node));
+  node->kind = ND_NUM;
+  node->val = val;
+  return node;
+}
+
+struct Node *expr() {
+  struct Node *node = new_node_num(expect_number());
+
+  for (;;) {
+    if (consume('+')) {
+      node = new_node(ND_ADD, node, expr());
+    } else if (consume('-')) {
+      node = new_node(ND_SUB, node, expr());
+    } else {
+      return node;
+    }
+  }
+}
+
+void gen(struct Node *node) {
+  if (node->kind == ND_NUM) {
+    printf("  push %d\n", node->val);
+    return;
+  }
+
+  gen(node->lhs);
+  gen(node->rhs);
+
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+
+  switch (node->kind) {
+    case ND_ADD:
+      printf("  add rax, rdi\n");
+      break;
+    case ND_SUB:
+      printf("  sub rax, rdi\n");
+      break;
+    default:
+      break;
+  }
+
+  printf("  push rax\n");
+}
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "引数の個数が正しくありません．\n");
@@ -130,25 +200,20 @@ int main(int argc, char **argv) {
   user_input = argv[1];
   // トークナイズする
   token = tokenize();
+  // 抽象構文木の生成
+  struct Node *node = expr();
 
   // アセンブリの前半を出力
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
 
-  // 式の最初は数値でなければならないので，それをチェックして
-  // 最初のmov命令を出力
-  printf("  mov rax, %d\n", expect_number());
+  // 抽象構文木を下りながらコードを生成
+  gen(node);
 
-  while (!at_eof()) {
-    if (consume('+')) {
-      printf("  add rax, %d\n", expect_number());
-    }
-
-    expect('-');
-    printf("  sub rax, %d\n", expect_number());
-  }
-
+  // スタックトップに式全体の値が残っているので，
+  // それをRAXにロード
+  printf("  pop rax\n");
   printf("  ret\n");
   return 0;
 }
