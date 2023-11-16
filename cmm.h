@@ -47,22 +47,23 @@ struct Token *tokenize();
 
 // 抽象構文木のノードの種類
 enum NodeKind {
-  ND_ADD,    // +
-  ND_SUB,    // -
-  ND_MUL,    // *
-  ND_DIV,    // /
-  ND_EQ,     // ==
-  ND_NE,     // !=
-  ND_LT,     // <
-  ND_LE,     // <=
-  ND_ASSIGN, // 代入
-  ND_NUM,    // 整数
-  ND_LVAR,   // ローカル変数
-  ND_RETURN, // リターン文
-  ND_IF,     // if文
-  ND_WHILE,  // while文
-  ND_FOR,    // for文
-  ND_BLOCK,  // ブロック
+  ND_ADD,       // +
+  ND_SUB,       // -
+  ND_MUL,       // *
+  ND_DIV,       // /
+  ND_EQ,        // ==
+  ND_NE,        // !=
+  ND_LT,        // <
+  ND_LE,        // <=
+  ND_ASSIGN,    // 代入
+  ND_NUM,       // 整数
+  ND_LVAR,      // ローカル変数
+  ND_RETURN,    // リターン文
+  ND_IF,        // if文
+  ND_WHILE,     // while文
+  ND_FOR,       // for文
+  ND_BLOCK,     // ブロック
+  ND_FUNC_CALL, // 関数呼び出し
 };
 
 // 抽象構文木のノード型
@@ -78,6 +79,9 @@ struct Node {
   struct Node *cond;      // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
   struct Node *stmt1;     // kind == ND_IF | ND_WHILE のとき使用
   struct Node *stmt2;     // kind == ND_IFのとき使用
+
+  char *func_name; // kind == ND_FUNC_CALL のとき使用
+  int arg[6];      // kind == ND_FUNC_CALL のとき使用
 };
 
 struct Node *new_node(enum NodeKind kind, struct Node *lhs, struct Node *rhs);
@@ -95,7 +99,7 @@ struct LVar {
   int offset;        // RBPからのオフセット
 };
 
-void program(struct Token **tok);
+struct Node *parse(struct Token **tok);
 struct Node *stmt(struct Token **tok);
 struct Node *expr(struct Token **tok);
 struct Node *assign(struct Token **tok);
@@ -110,5 +114,7 @@ struct Node *primary(struct Token **tok);
 // codegen.c
 //////////////////////
 
+void codegen(struct Node *node);
+void gen_stmt(struct Node *node);
+void gen_expr(struct Node *node);
 void gen_lval(struct Node *node);
-void gen(struct Node *node);

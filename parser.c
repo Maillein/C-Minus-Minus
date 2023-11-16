@@ -75,13 +75,16 @@ struct LVar *new_lvar(struct Token **tok) {
   return lvar;
 }
 
-// program = stmt*
-void program(struct Token **tok) {
-  int i = 0;
-  while (!at_eof(tok)) {
-    code[i++] = stmt(tok);
+// program = "{" stmt* "}"
+struct Node *parse(struct Token **tok) {
+  *tok = skip(tok, "{");
+  struct Node head;
+  head.rhs = NULL;
+  struct Node *cur = &head;
+  while (!equal(tok, "}")) {
+    cur = cur->rhs = new_node(ND_BLOCK, stmt(tok), NULL);
   }
-  code[i] = NULL;
+  return head.rhs;
 }
 
 // stmt = expr ";"
@@ -242,19 +245,30 @@ struct Node *unary(struct Token **tok) {
   }
 }
 
-// primary = num | ident | "(" expr ")"
+// primary = num
+//         | ident ( "(" ")" )?
+//         | "(" expr ")"
 struct Node *primary(struct Token **tok) {
   if (equal(tok, "(")) {
     struct Node *node = expr(tok);
     *tok = skip(tok, ")");
     return node;
   } else if ((*tok)->kind == TK_IDENT) {
-    struct LVar *lvar = find_lvar(tok);
-    if (lvar == NULL) {
-      lvar = new_lvar(tok);
+    if (equal(&(*tok)->next, "(")) {
+      struct Node *node = new_node(ND_FUNC_CALL, NULL, NULL);
+      node->func_name = calloc((*tok)->len + 1, sizeof(char));
+      memcpy(node->func_name, (*tok)->str, (*tok)->len * sizeof(char));
+      consume(tok, TK_IDENT);
+      *tok = skip(tok, ")");
+      return node;
+    } else {
+      struct LVar *lvar = find_lvar(tok);
+      if (lvar == NULL) {
+        lvar = new_lvar(tok);
+      }
+      consume(tok, TK_IDENT);
+      return new_node_var(lvar->offset);
     }
-    consume(tok, TK_IDENT);
-    return new_node_var(lvar->offset);
   } else if ((*tok)->kind == TK_NUM) {
     struct Node *node = new_node_num((*tok)->val);
     consume(tok, TK_NUM);

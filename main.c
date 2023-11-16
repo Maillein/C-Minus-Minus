@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   // トークナイズする
   struct Token *token = tokenize();
   // 抽象構文木の生成
-  program(&token);
+  struct Node *program = parse(&token);
 
   // アセンブリの前半を出力
   printf(".intel_syntax noprefix\n");
@@ -23,14 +23,12 @@ int main(int argc, char **argv) {
   // プロローグ
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 208\n");  // 変数26個分の領域
+  printf("  sub rsp, 216\n");  // 変数26個分の領域
 
-  // 先頭の式から順にコード生成
-  for (int i = 0; code[i]; i++) {
-    gen(code[i]);
-  }
+  codegen(program);
 
   // エピローグ
+  printf(".Lepilogue:\n");
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");

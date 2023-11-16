@@ -10,62 +10,38 @@ void gen_lval(struct Node *node) {
     error("左辺値が変数ではありません");
   }
 
-  printf("  mov rax, rbp # 左辺値アドレス生成開始\n");
-  printf("  sub rax, %d\n", node->offset);
-  printf("  push rax # 左辺値アドレス生成終了\n");
+  printf("  lea rax, [rbp-%d]\n", node->offset);
 }
 
-void gen(struct Node *node) {
-  if (node->kind == ND_NUM) {
-    printf("  push %d # 即値\n", node->val);
-    return;
-  }
-  if (node->kind == ND_LVAR) {
-    gen_lval(node);
-    printf("  pop rax # 左辺値アドレス読み込み\n");
-    printf("  mov rax, [rax] # 左辺値読み込み\n");
-    printf("  push rax # 左辺値読み込み完了\n");
-    return;
-  }
+// 「文」を生成する．assign, returnを除き，RAXに値を残さない．
+void gen_stmt(struct Node *node) {
   if (node->kind == ND_ASSIGN) {
     gen_lval(node->lhs);
-    gen(node->rhs);
+    printf("  push rax\n");
+    gen_expr(node->rhs);
     printf("  pop rdi\n");
-    printf("  pop rax\n");
-    printf("  mov [rax], rdi\n");
-    printf("  push rdi\n");
-    return;
-  }
-  if (node->kind == ND_BLOCK) {
-    for (; node; node = node->rhs) {
-      gen(node->lhs);
-      // ステートメントの結果をポップ
-      printf("  pop rax\n");
-    }
+    printf("  mov [rdi], rax\n");
     return;
   }
   if (node->kind == ND_RETURN) {
-    gen(node->lhs);
-    printf("  pop rax\n");
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
+    gen_expr(node->lhs);
+    printf("  jmp .Lepilogue\n");
     return;
   }
   if (node->kind == ND_IF) {
     int local_label = label_if++;
-    gen(node->cond);
-    printf("  pop rax\n");
+    gen_expr(node->cond);
+    // printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     if (node->stmt2 != NULL) {
       printf("  je .Lelse_%d\n", local_label);
-      gen(node->stmt1);
+      gen_stmt(node->stmt1);
       printf("  je  .Lend_if_%d\n", local_label);
       printf(".Lelse_%d:\n", local_label);
-      gen(node->stmt2);
+      gen_stmt(node->stmt2);
     } else {
       printf("  je .Lend_if_%d\n", local_label);
-      gen(node->stmt1);
+      gen_stmt(node->stmt1);
     }
     printf(".Lend_if_%d:\n", local_label);
     label_if++;
@@ -74,11 +50,11 @@ void gen(struct Node *node) {
   if (node->kind == ND_WHILE) {
     int local_label = label_while++;
     printf(".Lbegin_while_%d:\n", local_label);
-    gen(node->cond);
-    printf("  pop rax\n");
+    gen_expr(node->cond);
+    // printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  je .Lend_while_%d\n", local_label);
-    gen(node->stmt1);
+    gen_expr(node->stmt1);
     printf("  jmp .Lbegin_while_%d\n", local_label);
     printf(".Lend_while_%d:\n", local_label);
     return;
@@ -86,33 +62,62 @@ void gen(struct Node *node) {
   if (node->kind == ND_FOR) {
     int local_label = label_for++;
     if (node->for_begin) {
-      gen(node->for_begin);
+      gen_expr(node->for_begin);
     }
 
     printf(".Lbegin_for_%d:\n", local_label);
     if (node->cond) {
-      gen(node->cond);
-      printf("  pop rax\n");
+      gen_expr(node->cond);
+      // printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je .Lend_for_%d\n", local_label);
-      gen(node->stmt1);
+      gen_stmt(node->stmt1);
       if (node->for_after) {
-        gen(node->for_after);
+        gen_expr(node->for_after);
       }
       printf("  jmp .Lbegin_for_%d\n", local_label);
       printf(".Lend_for_%d:\n", local_label);
     } else {
-      gen(node->stmt1);
+      gen_stmt(node->stmt1);
       if (node->for_after) {
-        gen(node->for_after);
+        gen_expr(node->for_after);
       }
       printf("  jmp .Lbegin_for_%d\n", local_label);
     }
     return;
   }
+  if (node->kind == ND_BLOCK) {
+    for (; node; node = node->rhs) {
+      gen_stmt(node->lhs);
+    }
+    return;
+  }
+}
 
-  gen(node->lhs);
-  gen(node->rhs);
+// 「式」を生成する．評価結果はRAXレジスタに格納される．
+void gen_expr(struct Node *node) {
+  if (node->kind == ND_NUM) {
+    printf("  mov rax, %d\n", node->val);
+    return;
+  }
+  if (node->kind == ND_LVAR) {
+    gen_lval(node);
+    printf("  mov rax, [rax]\n");
+    return;
+  }
+  if (node->kind == ND_ASSIGN) {
+    gen_lval(node->lhs);
+    printf("  push rax\n");
+    gen_expr(node->rhs);
+    printf("  pop rdi\n");
+    printf("  mov [rdi], rax\n");
+    return;
+  }
+
+  gen_expr(node->lhs);
+  printf("  push rax\n");
+  gen_expr(node->rhs);
+  printf("  push rax\n");
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
@@ -143,5 +148,6 @@ void gen(struct Node *node) {
     printf("  setle al\n");
     printf("  movzb rax, al\n");
   }
-  printf("  push rax\n");
 }
+
+void codegen(struct Node *node) { gen_stmt(node); }
