@@ -87,7 +87,7 @@ struct Node *parse(struct Token **tok) {
   return head.rhs;
 }
 
-// stmt = expr ";"
+// stmt = expr? ";"
 //      | "{" stmt* "}"
 //      | "return" expr ";"
 //      | "if" "(" expr ")" stmt ( "else" stmt )?
@@ -152,6 +152,9 @@ struct Node *stmt(struct Token **tok) {
       cur = cur->rhs = new_node(ND_BLOCK, stmt(tok), NULL);
     }
     return head.rhs;
+  }
+  if (equal(tok, ";")) {
+    return new_node(ND_EMPTY, NULL, NULL);
   }
   struct Node *node = expr(tok);
   *tok = skip(tok, ";");

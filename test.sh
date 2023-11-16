@@ -121,6 +121,8 @@ assert 45 '
   return sum;
 }'
 
+assert 10 '{ ;; a = 10;; ; ; return arg1(a); }'
+
 assert 0 '{ hello(); }'
 assert 19 '{ return arg0(); }'
 assert 20 '{ return arg0() + 1; }'

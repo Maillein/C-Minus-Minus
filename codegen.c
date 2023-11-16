@@ -92,6 +92,9 @@ void gen_stmt(struct Node *node) {
     }
     return;
   }
+  if (node->kind == ND_EMPTY) {
+    return;
+  }
 }
 
 // 「式」を生成する．評価結果はRAXレジスタに格納される．

@@ -63,6 +63,7 @@ enum NodeKind {
   ND_WHILE,     // while文
   ND_FOR,       // for文
   ND_BLOCK,     // ブロック
+  ND_EMPTY,     // 空のブロック
   ND_FUNC_CALL, // 関数呼び出し
   ND_FUNC_ARG,  // 関数の引数
 };
