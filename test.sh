@@ -4,7 +4,8 @@ assert() {
   input="$2"
 
   ./cmm "$input" > tmp.s
-  gcc -g -o tmp tmp.s
+  gcc -c -o test_functions.o test_functions.c
+  gcc -g -o tmp tmp.s test_functions.o
   ./tmp
   actual="$?"
 
@@ -54,6 +55,8 @@ assert 64 '{ a=60;z=4; return a+z; }'
 assert 9 '{ return foo=9; }'
 assert 15 '{ foo=20;bar=5; return foo-bar; }'
 assert 12 '{ a_1 = 2; a_2 = 2; a_3 = 3; a_4 = a_1 * a_2 * a_3; return a_4; }'
+assert 1 '{ a = b = c = d = e = f = g = 1; return a; }'
+assert 1 '{ return a = (b = 1); }'
 
 assert 1 '{ return 1; 2; 3; }'
 assert 2 '{ 1; return 2; 3; }'
@@ -102,5 +105,8 @@ assert 45 '
   } 
   return sum;
 }'
+assert 19 '{ return arg0(); }'
+assert 20 '{ return arg0() + 1; }'
+assert 10 '{ a = arg0(); return 10; }'
 
 echo OK

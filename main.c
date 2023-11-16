@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   // プロローグ
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 216\n");  // 変数26個分の領域
+  printf("  sub rsp, 0x100\n");  // 変数26個分の領域
 
   codegen(program);
 

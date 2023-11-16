@@ -10,17 +10,13 @@ void gen_lval(struct Node *node) {
     error("左辺値が変数ではありません");
   }
 
-  printf("  lea rax, [rbp-%d]\n", node->offset);
+  printf("  lea rdi, [rbp-%d]\n", node->offset);
 }
 
 // 「文」を生成する．assign, returnを除き，RAXに値を残さない．
 void gen_stmt(struct Node *node) {
   if (node->kind == ND_ASSIGN) {
-    gen_lval(node->lhs);
-    printf("  push rax\n");
-    gen_expr(node->rhs);
-    printf("  pop rdi\n");
-    printf("  mov [rdi], rax\n");
+    gen_expr(node);
     return;
   }
   if (node->kind == ND_RETURN) {
@@ -86,6 +82,10 @@ void gen_stmt(struct Node *node) {
     }
     return;
   }
+  if (node->kind == ND_FUNC_CALL) {
+    gen_expr(node);
+    return;
+  }
   if (node->kind == ND_BLOCK) {
     for (; node; node = node->rhs) {
       gen_stmt(node->lhs);
@@ -102,15 +102,17 @@ void gen_expr(struct Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_lval(node);
-    printf("  mov rax, [rax]\n");
+    printf("  mov rax, [rdi]\n");
     return;
   }
   if (node->kind == ND_ASSIGN) {
-    gen_lval(node->lhs);
-    printf("  push rax\n");
     gen_expr(node->rhs);
-    printf("  pop rdi\n");
+    gen_lval(node->lhs);
     printf("  mov [rdi], rax\n");
+    return;
+  }
+  if (node->kind == ND_FUNC_CALL) {
+    printf("  call %s\n", node->func_name);
     return;
   }
 
