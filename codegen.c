@@ -4,6 +4,7 @@
 static int label_if;
 static int label_while;
 static int label_for;
+static char *label_func_name;
 
 void gen_lval(struct Node *node) {
   if (node->kind != ND_LVAR) {
@@ -21,7 +22,7 @@ void gen_stmt(struct Node *node) {
   }
   if (node->kind == ND_RETURN) {
     gen_expr(node->lhs);
-    printf("  jmp .Lepilogue\n");
+    printf("  jmp .L_%s_epilogue\n", label_func_name);
     return;
   }
   if (node->kind == ND_IF) {
@@ -176,4 +177,25 @@ void gen_expr(struct Node *node) {
   }
 }
 
-void codegen(struct Node *node) { gen_stmt(node); }
+
+void codegen(struct Node *node) {
+  if (node->kind != ND_FUNC_DEF) {
+    error("関数定義ではありません");
+  }
+  label_func_name = node->func_name;
+  printf(".global %s\n", label_func_name);
+  printf("%s:\n", label_func_name);
+
+  // プロローグ
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, 0x100\n"); // ローカル変数の領域(16byte境界でアライメント)
+
+  gen_stmt(node->rhs);
+
+  // エピローグ
+  printf(".L_%s_epilogue:\n", label_func_name);
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  printf("  ret\n");
+}

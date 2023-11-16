@@ -75,17 +75,34 @@ struct LVar *new_lvar(struct Token **tok) {
   return lvar;
 }
 
-// program = "{" stmt* "}"
+// program = func_definition
 struct Node *parse(struct Token **tok) {
-  *tok = skip(tok, "{");
-  struct Node head;
-  head.rhs = NULL;
-  struct Node *cur = &head;
-  while (!equal(tok, "}")) {
-    cur = cur->rhs = new_node(ND_BLOCK, stmt(tok), NULL);
-  }
-  return head.rhs;
+  return func_definition(tok);
 }
+
+// func_definition = ident "(" ( ident ( "," ident )* )? ")" "{" stmt* "}"
+struct Node *func_definition(struct Token **tok) {
+  if ((*tok)->kind != TK_IDENT) {
+    error_at((*tok)->str, "関数定義ではありません．");
+  }
+  struct Node *node = calloc(1, sizeof(struct Node));
+  node->kind = ND_FUNC_DEF;
+  node->func_name = calloc((*tok)->len + 1, sizeof(char));
+  memcpy(node->func_name, (*tok)->str, (*tok)->len);
+  consume(tok, TK_IDENT);
+  *tok = skip(tok, "(");
+  // struct Node arg_head;
+  // arg_head.rhs = NULL;
+  // struct Node *cur = &arg_head;
+  while (!equal(tok, ")")) {
+  }
+  if (!check(tok, "{")) {
+    error_at((*tok)->str, "'{'ではありません．");
+  }
+  node->rhs = stmt(tok);
+  return node;
+}
+
 
 // stmt = expr? ";"
 //      | "{" stmt* "}"

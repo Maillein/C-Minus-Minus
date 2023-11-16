@@ -34,6 +34,7 @@ extern char *user_input;
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool equal(struct Token **tok, char *op);
+bool check(struct Token **tok, char *op);
 struct Token *skip(struct Token **tok, char *op);
 bool consume(struct Token **tok, enum TokenKind kind);
 bool at_eof(struct Token **tok);
@@ -66,6 +67,7 @@ enum NodeKind {
   ND_EMPTY,     // 空のブロック
   ND_FUNC_CALL, // 関数呼び出し
   ND_FUNC_ARG,  // 関数の引数
+  ND_FUNC_DEF,  // 関数定義
 };
 
 // 抽象構文木のノード型
@@ -102,6 +104,7 @@ struct LVar {
 };
 
 struct Node *parse(struct Token **tok);
+struct Node *func_definition(struct Token **tok);
 struct Node *stmt(struct Token **tok);
 struct Node *expr(struct Token **tok);
 struct Node *assign(struct Token **tok);

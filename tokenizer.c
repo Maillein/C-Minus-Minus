@@ -24,13 +24,18 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
-// トークンの文字列が期待しているものと等しいか？
+// トークンの文字列が期待しているものと等しいとき，1個読み進める．
 bool equal(struct Token **tok, char *op) {
   if (strlen(op) == (*tok)->len && memcmp((*tok)->str, op, (*tok)->len) == 0) {
     *tok = (*tok)->next;
     return true;
   }
   return false;
+}
+
+// トークンの文字列が期待しているものと等しいか？
+bool check(struct Token **tok, char *op) {
+  return strlen(op) == (*tok)->len && memcmp((*tok)->str, op, (*tok)->len) == 0;
 }
 
 // 次のトークンが期待している記号のときは，トークンを1個読み進める．
