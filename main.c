@@ -28,9 +28,6 @@ int main(int argc, char **argv) {
   // 先頭の式から順にコード生成
   for (int i = 0; code[i]; i++) {
     gen(code[i]);
-
-    // 式の評価結果をRAXに
-    printf("  pop rax\n");
   }
 
   // エピローグ

@@ -9,7 +9,7 @@ struct Node *new_node(enum NodeKind kind, struct Node *lhs, struct Node *rhs) {
   return node;
 }
 
-struct Node *new_node_val(int offset) {
+struct Node *new_node_var(int offset) {
   struct Node *node = calloc(1, sizeof(struct Node));
   node->kind = ND_LVAR;
   node->offset = offset;
@@ -85,6 +85,7 @@ void program(struct Token **tok) {
 }
 
 // stmt = expr ";"
+//      | "{" stmt* "}"
 //      | "return" expr ";"
 //      | "if" "(" expr ")" stmt ( "else" stmt )?
 //      | "while" "(" expr ")" stmt
@@ -139,6 +140,15 @@ struct Node *stmt(struct Token **tok) {
     struct Node *node = expr(tok);
     *tok = skip(tok, ";");
     return new_node(ND_RETURN, node, NULL);
+  }
+  if (equal(tok, "{")) {
+    struct Node head;
+    head.rhs = NULL;
+    struct Node *cur = &head;
+    while (!equal(tok, "}")) {
+      cur = cur->rhs = new_node(ND_BLOCK, stmt(tok), NULL);
+    }
+    return head.rhs;
   }
   struct Node *node = expr(tok);
   *tok = skip(tok, ";");
@@ -244,7 +254,7 @@ struct Node *primary(struct Token **tok) {
       lvar = new_lvar(tok);
     }
     consume(tok, TK_IDENT);
-    return new_node_val(lvar->offset);
+    return new_node_var(lvar->offset);
   } else if ((*tok)->kind == TK_NUM) {
     struct Node *node = new_node_num((*tok)->val);
     consume(tok, TK_NUM);

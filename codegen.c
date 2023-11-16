@@ -17,7 +17,7 @@ void gen_lval(struct Node *node) {
 
 void gen(struct Node *node) {
   if (node->kind == ND_NUM) {
-    printf("  push %d\n", node->val);
+    printf("  push %d # 即値\n", node->val);
     return;
   }
   if (node->kind == ND_LVAR) {
@@ -34,6 +34,14 @@ void gen(struct Node *node) {
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
+    return;
+  }
+  if (node->kind == ND_BLOCK) {
+    for (; node; node = node->rhs) {
+      gen(node->lhs);
+      // ステートメントの結果をポップ
+      printf("  pop rax\n");
+    }
     return;
   }
   if (node->kind == ND_RETURN) {
