@@ -112,6 +112,27 @@ void gen_expr(struct Node *node) {
     return;
   }
   if (node->kind == ND_FUNC_CALL) {
+    int nargs = 0;
+    for (struct Node *arg = node->args; arg && nargs <= 6; arg = arg->rhs) {
+      gen_expr(arg->lhs);
+      printf("  push rax\n");
+      nargs++;
+    }
+    for (; nargs; nargs--) {
+      if (nargs == 1) {
+        printf("  pop rdi\n");
+      } else if (nargs == 2) {
+        printf("  pop rsi\n");
+      } else if (nargs == 3) {
+        printf("  pop rdx\n");
+      } else if (nargs == 4) {
+        printf("  pop rcx\n");
+      } else if (nargs == 5) {
+        printf("  pop r8\n");
+      } else if (nargs == 6) {
+        printf("  pop r9\n");
+      }
+    }
     printf("  call %s\n", node->func_name);
     return;
   }

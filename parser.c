@@ -246,7 +246,7 @@ struct Node *unary(struct Token **tok) {
 }
 
 // primary = num
-//         | ident ( "(" ")" )?
+//         | ident ( "(" ( expr ( "," expr )* )? ")" )
 //         | "(" expr ")"
 struct Node *primary(struct Token **tok) {
   if (equal(tok, "(")) {
@@ -255,11 +255,22 @@ struct Node *primary(struct Token **tok) {
     return node;
   } else if ((*tok)->kind == TK_IDENT) {
     if (equal(&(*tok)->next, "(")) {
+      // 関数名をパース
       struct Node *node = new_node(ND_FUNC_CALL, NULL, NULL);
       node->func_name = calloc((*tok)->len + 1, sizeof(char));
       memcpy(node->func_name, (*tok)->str, (*tok)->len * sizeof(char));
       consume(tok, TK_IDENT);
-      *tok = skip(tok, ")");
+      
+      //引数をパース
+      struct Node head;
+      head.rhs = NULL;
+      struct Node *cur = &head;
+      while (!equal(tok, ")")) {
+        cur = cur->rhs = new_node(ND_FUNC_ARG, expr(tok), NULL);
+        equal(tok, ",");
+      }
+      node->args = head.rhs;
+
       return node;
     } else {
       struct LVar *lvar = find_lvar(tok);

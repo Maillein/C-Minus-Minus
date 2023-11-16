@@ -56,6 +56,7 @@ assert 9 '{ return foo=9; }'
 assert 15 '{ foo=20;bar=5; return foo-bar; }'
 assert 12 '{ a_1 = 2; a_2 = 2; a_3 = 3; a_4 = a_1 * a_2 * a_3; return a_4; }'
 assert 1 '{ a = b = c = d = e = f = g = 1; return a; }'
+assert 4 '{ a = (b = (c = (d = 1) + 1) + 1) + 1; if (d == 1) return a; else return 100;}'
 assert 1 '{ return a = (b = 1); }'
 
 assert 1 '{ return 1; 2; 3; }'
@@ -83,6 +84,20 @@ assert 3 '{ if (0) if (1) return 1; else return 2; else if (1) return 3; else re
 assert 4 '{ if (0) if (1) return 1; else return 2; else if (0) return 3; else return 4; return 5; }'
 assert 3 '{ if (0) if (0) return 1; else return 2; else if (1) return 3; else return 4; return 5; }'
 assert 4 '{ if (0) if (0) return 1; else return 2; else if (0) return 3; else return 4; return 5; }'
+assert 2 '
+{
+  a = 2;
+  if (a == 1) {
+    return 1;
+  } else if (a == 2) { 
+    return 2;
+  } else if (a == 3) {
+    return 3;
+  } else {
+    return 4;
+  }
+}
+'
 
 assert 5 '{ a=10; while (a > 5) a = a - 1; return a; }'
 assert 55 '{ i = 0; j = 0; for (i = 0; i <= 10; i = i + 1) j = i + j; return j; }'
@@ -105,8 +120,22 @@ assert 45 '
   } 
   return sum;
 }'
+
+assert 0 '{ hello(); }'
 assert 19 '{ return arg0(); }'
 assert 20 '{ return arg0() + 1; }'
 assert 10 '{ a = arg0(); return 10; }'
+assert 19 '{ return hello() + arg0(); }'
+
+assert 1 '{ return arg1(1); }'
+assert 3 '{ return arg2(1, 2); }'
+assert 6 '{ return arg3(1, 2, 3); }'
+assert 10 '{ return arg4(1, 2, 3, 4); }'
+assert 15 '{ return arg5(1, 2, 3, 4, 5); }'
+assert 21 '{ return arg6(1, 2, 3, 4, 5, 6); }'
+assert 0 '{ return print6(1, 2, 3, 4, 5, 6); }'
+assert 6 '{ a = b = c = d = e = f = 1; return arg6(a, b, c, d, e, f); }'
+assert 10 '{ a = b = c = d = e = f = 1; return arg6(a, b + c, c + d + e, d, h = (g = e = 1), arg2(1, 1)); }'
+assert 1 '{ return arg1(arg1(arg1(arg1(1)))); }'
 
 echo OK

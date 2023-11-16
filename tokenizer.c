@@ -97,7 +97,7 @@ struct Token *tokenize() {
       continue;
     }
 
-    if (strchr(";+-*/()<>={}", *p)) {
+    if (strchr(";+-*/()<>={},", *p)) {
       cur = new_token(TK_OP, cur, p++, 1);
       continue;
     }

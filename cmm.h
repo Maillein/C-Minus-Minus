@@ -64,6 +64,7 @@ enum NodeKind {
   ND_FOR,       // for文
   ND_BLOCK,     // ブロック
   ND_FUNC_CALL, // 関数呼び出し
+  ND_FUNC_ARG,  // 関数の引数
 };
 
 // 抽象構文木のノード型
@@ -80,8 +81,8 @@ struct Node {
   struct Node *stmt1;     // kind == ND_IF | ND_WHILE のとき使用
   struct Node *stmt2;     // kind == ND_IFのとき使用
 
-  char *func_name; // kind == ND_FUNC_CALL のとき使用
-  int arg[6];      // kind == ND_FUNC_CALL のとき使用
+  char *func_name;   // kind == ND_FUNC_CALL のとき使用
+  struct Node *args; // kind == ND_FUNC_CALL のとき使用
 };
 
 struct Node *new_node(enum NodeKind kind, struct Node *lhs, struct Node *rhs);
