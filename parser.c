@@ -23,6 +23,15 @@ struct Node *new_node_num(int val) {
   return node;
 }
 
+struct Node *new_node_if(struct Node *cond, struct Node *stmt1, struct Node *stmt2) {
+  struct Node *node = calloc(1, sizeof(struct Node));
+  node->kind = ND_IF;
+  node->cond = cond;
+  node->stmt1 = stmt1;
+  node->stmt2 = stmt2;
+  return node;
+}
+
 struct Node *code[100];
 struct LVar *locals;
 
@@ -57,14 +66,20 @@ void program(struct Token **tok) {
 
 // stmt = expr ";"
 //      | "return" expr ";"
-//      | "if" "(" expr ")" stmt
+//      | "if" "(" expr ")" stmt ( "else" stmt )?
 struct Node *stmt(struct Token **tok) {
   if (equal(tok, "if")) {
+    struct Node *cond, *stmt1, *stmt2;
     *tok = skip(tok, "(");
-    struct Node *lhs = expr(tok);
+    cond = expr(tok);
     *tok = skip(tok, ")");
-    struct Node *rhs = stmt(tok);
-    return new_node(ND_IF, lhs, rhs);
+    stmt1 = stmt(tok);
+    if (equal(tok, "else")) {
+      stmt2 = stmt(tok);
+    } else {
+      stmt2 = NULL;
+    }
+    return new_node_if(cond, stmt1, stmt2);
   } else if (equal(tok, "return")) {
     struct Node *node = expr(tok);
     *tok = skip(tok, ";");

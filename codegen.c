@@ -44,11 +44,19 @@ void gen(struct Node *node) {
   }
   if (node->kind == ND_IF) {
     int local_label = label_if++;
-    gen(node->lhs);
+    gen(node->cond);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  je  .Lend_if%d\n", local_label);
-    gen(node->rhs);
+    if (node->stmt2 != NULL) {
+      printf("  je .Lelse%d\n", local_label);
+      gen(node->stmt1);
+      printf("  je  .Lend_if%d\n", local_label);
+      printf(".Lelse%d:\n", local_label);
+      gen(node->stmt2);
+    } else {
+      printf("  je .Lend_if%d\n", local_label);
+      gen(node->stmt1);
+    }
     printf(".Lend_if%d:\n", local_label);
     label_if++;
     return;

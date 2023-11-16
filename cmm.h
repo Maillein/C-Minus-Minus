@@ -69,6 +69,10 @@ struct Node {
   struct Node *rhs;
   int val;    // kind == ND_NUMのとき使用
   int offset; // kind == ND_LVARのとき使用
+
+  struct Node *cond;  // kind == ND_IFのとき使用
+  struct Node *stmt1; // kind == ND_IFのとき使用
+  struct Node *stmt2; // kind == ND_IFのとき使用
 };
 
 struct Node *new_node(enum NodeKind kind, struct Node *lhs, struct Node *rhs);

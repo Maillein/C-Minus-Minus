@@ -1,4 +1,5 @@
 #include "cmm.h"
+#include <string.h>
 
 // エラーを報告するための関数
 void error(char *fmt, ...) {
@@ -54,7 +55,8 @@ bool consume(struct Token **tok, enum TokenKind kind) {
 bool at_eof(struct Token **tok) { return (*tok)->kind == TK_EOF; }
 
 // 新しいトークンを作成して，curにつなげる．
-struct Token *new_token(enum TokenKind kind, struct Token *cur, char *str, int len) {
+struct Token *new_token(enum TokenKind kind, struct Token *cur, char *str,
+                        int len) {
   struct Token *tok = calloc(1, sizeof(struct Token));
   tok->kind = kind;
   tok->str = str;
@@ -63,9 +65,17 @@ struct Token *new_token(enum TokenKind kind, struct Token *cur, char *str, int l
   return tok;
 }
 
-int is_alnum(char c) {
+int is_ident_char1(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
+}
+
+int is_ident_char2(char c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
          ('0' <= c && c <= '9') || c == '_';
+}
+
+int is_keyword(char *p, char *s, int s_len) {
+  return memcmp(p, s, s_len) == 0 && !is_ident_char2(p[s_len]);
 }
 
 struct Token *tokenize() {
@@ -92,21 +102,27 @@ struct Token *tokenize() {
       continue;
     }
 
-    if (memcmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+    if (is_keyword(p, "return", 6)) {
       cur = new_token(TK_KEYWD, cur, p, 6);
       p += 6;
       continue;
     }
 
-    if (memcmp(p, "if", 2) == 0 && !is_alnum(p[6])) {
+    if (is_keyword(p, "if", 2)) {
       cur = new_token(TK_KEYWD, cur, p, 2);
       p += 2;
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z' || 'A' <= *p && *p <= 'Z' || *p == '_') {
+    if (is_keyword(p, "else", 4)) {
+      cur = new_token(TK_KEYWD, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
+    if (is_ident_char1(*p)) {
       cur = new_token(TK_IDENT, cur, p, 0);
-      while (is_alnum(*p)) {
+      while (is_ident_char2(*p)) {
         p++;
         cur->len++;
       }
