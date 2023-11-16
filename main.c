@@ -1,9 +1,7 @@
-#include "9cc.h"
+#include "cmm.h"
 
 // ユーザの入力
 char *user_input;
-// 現在着目しているトークン
-struct Token *token;
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -13,21 +11,31 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   // トークナイズする
-  token = tokenize();
+  struct Token *token = tokenize();
   // 抽象構文木の生成
-  struct Node *node = expr();
+  program(&token);
 
   // アセンブリの前半を出力
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
 
-  // 抽象構文木を下りながらコードを生成
-  gen(node);
+  // プロローグ
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, 208\n");  // 変数26個分の領域
 
-  // スタックトップに式全体の値が残っているので，
-  // それをRAXにロード
-  printf("  pop rax\n");
+  // 先頭の式から順にコード生成
+  for (int i = 0; code[i]; i++) {
+    gen(code[i]);
+
+    // 式の評価結果をRAXに
+    printf("  pop rax\n");
+  }
+
+  // エピローグ
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
   printf("  ret\n");
   return 0;
 }

@@ -1,4 +1,4 @@
-#include "9cc.h"
+#include "cmm.h"
 
 // エラーを報告するための関数
 void error(char *fmt, ...) {
@@ -23,48 +23,49 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
-// 次のトークンが期待している記号のときは，トークンを1個読み進めて
-// 真を返す．それ以外のときは偽を返す．
-bool consume(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-      memcmp(op, token->str, token->len)) {
-    return false;
+// トークンの文字列が期待しているものと等しいか？
+bool equal(struct Token **tok, char *op) {
+  if (strlen(op) == (*tok)->len && memcmp((*tok)->str, op, (*tok)->len) == 0) {
+    *tok = (*tok)->next;
+    return true;
   }
-  token = token->next;
-  return true;
+  return false;
 }
 
 // 次のトークンが期待している記号のときは，トークンを1個読み進める．
 // それ以外の場合はエラーを報告する．
-void expect(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-      memcmp(op, token->str, token->len)) {
-    error_at(token->str, "'%c'ではありません", op);
+struct Token *skip(struct Token **tok, char *op) {
+  if (!equal(tok, op)) {
+    error_at((*tok)->str, "'%s'ではありません", op);
   }
-  token = token->next;
+  return *tok;
 }
 
-// 次のトークンが数値の場合，トークンを1個読み進めてその数値を返す．
-// それ以外の場合はエラーを報告する．
-int expect_number() {
-  if (token->kind != TK_NUM) {
-    error_at(token->str, "数値ではありません");
+// 次のトークンの型がkindのときは，トークンを1個読み進めて
+// 真を返す．それ以外のときは偽を返す．
+bool consume(struct Token **tok, enum TokenKind kind) {
+  if ((*tok)->kind != kind) {
+    return false;
   }
-  int val = token->val;
-  token = token->next;
-  return val;
+  *tok = (*tok)->next;
+  return true;
 }
 
-bool at_eof() { return token->kind == TK_EOF; }
+bool at_eof(struct Token **tok) { return (*tok)->kind == TK_EOF; }
 
 // 新しいトークンを作成して，curにつなげる．
-struct Token *new_token(TokenKind kind, struct Token *cur, char *str, int len) {
+struct Token *new_token(enum TokenKind kind, struct Token *cur, char *str, int len) {
   struct Token *tok = calloc(1, sizeof(struct Token));
   tok->kind = kind;
   tok->str = str;
   tok->len = len;
   cur->next = tok;
   return tok;
+}
+
+int is_alnum(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') || c == '_';
 }
 
 struct Token *tokenize() {
@@ -86,8 +87,23 @@ struct Token *tokenize() {
       continue;
     }
 
-    if (strchr("+-*/()<>", *p)) {
+    if (strchr(";+-*/()<>=", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
+      continue;
+    }
+
+    if (memcmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z' || 'A' <= *p && *p <= 'Z' || *p == '_') {
+      cur = new_token(TK_IDENT, cur, p, 0);
+      while (is_alnum(*p)) {
+        p++;
+        cur->len++;
+      }
       continue;
     }
 
