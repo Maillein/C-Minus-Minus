@@ -3,15 +3,16 @@
 
 static int label_if;
 static int label_while;
+static int label_for;
 
 void gen_lval(struct Node *node) {
   if (node->kind != ND_LVAR) {
     error("左辺値が変数ではありません");
   }
 
-  printf("  mov rax, rbp\n");
+  printf("  mov rax, rbp # 左辺値アドレス生成開始\n");
   printf("  sub rax, %d\n", node->offset);
-  printf("  push rax\n");
+  printf("  push rax # 左辺値アドレス生成終了\n");
 }
 
 void gen(struct Node *node) {
@@ -21,9 +22,9 @@ void gen(struct Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_lval(node);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+    printf("  pop rax # 左辺値アドレス読み込み\n");
+    printf("  mov rax, [rax] # 左辺値読み込み\n");
+    printf("  push rax # 左辺値読み込み完了\n");
     return;
   }
   if (node->kind == ND_ASSIGN) {
@@ -49,29 +50,56 @@ void gen(struct Node *node) {
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     if (node->stmt2 != NULL) {
-      printf("  je .Lelse%d\n", local_label);
+      printf("  je .Lelse_%d\n", local_label);
       gen(node->stmt1);
-      printf("  je  .Lend_if%d\n", local_label);
-      printf(".Lelse%d:\n", local_label);
+      printf("  je  .Lend_if_%d\n", local_label);
+      printf(".Lelse_%d:\n", local_label);
       gen(node->stmt2);
     } else {
-      printf("  je .Lend_if%d\n", local_label);
+      printf("  je .Lend_if_%d\n", local_label);
       gen(node->stmt1);
     }
-    printf(".Lend_if%d:\n", local_label);
+    printf(".Lend_if_%d:\n", local_label);
     label_if++;
     return;
   }
   if (node->kind == ND_WHILE) {
     int local_label = label_while++;
-    printf(".Lbegin_while%d:\n", local_label);
+    printf(".Lbegin_while_%d:\n", local_label);
     gen(node->cond);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  je .Lend_while%d\n", local_label);
+    printf("  je .Lend_while_%d\n", local_label);
     gen(node->stmt1);
-    printf("  jmp .Lbegin_while%d\n", local_label);
-    printf(".Lend_while%d:\n", local_label);
+    printf("  jmp .Lbegin_while_%d\n", local_label);
+    printf(".Lend_while_%d:\n", local_label);
+    return;
+  }
+  if (node->kind == ND_FOR) {
+    int local_label = label_for++;
+    if (node->for_begin) {
+      gen(node->for_begin);
+    }
+
+    printf(".Lbegin_for_%d:\n", local_label);
+    if (node->cond) {
+      gen(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .Lend_for_%d\n", local_label);
+      gen(node->stmt1);
+      if (node->for_after) {
+        gen(node->for_after);
+      }
+      printf("  jmp .Lbegin_for_%d\n", local_label);
+      printf(".Lend_for_%d:\n", local_label);
+    } else {
+      gen(node->stmt1);
+      if (node->for_after) {
+        gen(node->for_after);
+      }
+      printf("  jmp .Lbegin_for_%d\n", local_label);
+    }
     return;
   }
 

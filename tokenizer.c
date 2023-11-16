@@ -126,6 +126,12 @@ struct Token *tokenize() {
       continue;
     }
 
+    if (is_keyword(p, "for", 3)) {
+      cur = new_token(TK_KEYWD, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     if (is_ident_char1(*p)) {
       cur = new_token(TK_IDENT, cur, p, 0);
       while (is_ident_char2(*p)) {

@@ -41,6 +41,17 @@ struct Node *new_node_while(struct Node *cond, struct Node *stmt1) {
   return node;
 }
 
+struct Node *new_node_for(struct Node *for_begin, struct Node *cond,
+                          struct Node *for_after, struct Node *stmt1) {
+  struct Node *node = calloc(1, sizeof(struct Node));
+  node->kind = ND_FOR;
+  node->for_begin = for_begin;
+  node->cond = cond;
+  node->for_after = for_after;
+  node->stmt1 = stmt1;
+  return node;
+}
+
 struct Node *code[100];
 struct LVar *locals;
 
@@ -77,6 +88,7 @@ void program(struct Token **tok) {
 //      | "return" expr ";"
 //      | "if" "(" expr ")" stmt ( "else" stmt )?
 //      | "while" "(" expr ")" stmt
+//      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 struct Node *stmt(struct Token **tok) {
   if (equal(tok, "if")) {
     struct Node *cond, *stmt1, *stmt2;
@@ -98,6 +110,30 @@ struct Node *stmt(struct Token **tok) {
     *tok = skip(tok, ")");
     stmt1 = stmt(tok);
     return new_node_while(cond, stmt1);
+  }
+  if (equal(tok, "for")) {
+    struct Node *for_begin, *for_after, *cond, *stmt1;
+    *tok = skip(tok, "(");
+    if (equal(tok, ";")) {
+      for_begin = NULL;
+    } else {
+      for_begin = expr(tok);
+      *tok = skip(tok, ";");
+    }
+    if (equal(tok, ";")) {
+      cond = NULL;
+    } else {
+      cond = expr(tok);
+      *tok = skip(tok, ";");
+    }
+    if (equal(tok, ")")) {
+      for_after = NULL;
+    } else {
+      for_after = expr(tok);
+      *tok = skip(tok, ")");
+    }
+    stmt1 = stmt(tok);
+    return new_node_for(for_begin, cond, for_after, stmt1);
   }
   if (equal(tok, "return")) {
     struct Node *node = expr(tok);
