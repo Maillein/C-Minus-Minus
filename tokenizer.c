@@ -82,19 +82,25 @@ struct Token *tokenize() {
 
     if (memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
         memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0) {
-      cur = new_token(TK_RESERVED, cur, p, 2);
+      cur = new_token(TK_OP, cur, p, 2);
       p += 2;
       continue;
     }
 
     if (strchr(";+-*/()<>=", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++, 1);
+      cur = new_token(TK_OP, cur, p++, 1);
       continue;
     }
 
     if (memcmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
-      cur = new_token(TK_RETURN, cur, p, 6);
+      cur = new_token(TK_KEYWD, cur, p, 6);
       p += 6;
+      continue;
+    }
+
+    if (memcmp(p, "if", 2) == 0 && !is_alnum(p[6])) {
+      cur = new_token(TK_KEYWD, cur, p, 2);
+      p += 2;
       continue;
     }
 

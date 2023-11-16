@@ -56,6 +56,19 @@ assert 9 'foo=9;'
 assert 15 'foo=20;bar=5;foo-bar;'
 assert 12 'a_1 = 2; a_2 = 2; a_3 = 3; a_4 = a_1 * a_2 * a_3;'
 
+assert 1 'return 1; 2; 3;'
 assert 2 '1; return 2; 3;'
+assert 3 '1; 2; return 3;'
+
+assert 1 'if (1) return 1; return 2;'
+assert 2 'if (0) return 1; return 2;'
+assert 1 'a = 1; if (a) return 1; return 2;'
+assert 2 'a = 0; if (a) return 1; return 2;'
+assert 1 'a = 0; b = 1; if (a + b) return 1; return 2;'
+assert 2 'a = 0; b = 0; if (a + b) return 1; return 2;'
+assert 1 'if (1) if (1) return 1; return 2;'
+assert 2 'if (1) if (0) return 1; return 2;'
+assert 2 'if (0) if (1) return 1; return 2;'
+assert 2 'if (0) if (0) return 1; return 2;'
 
 echo OK

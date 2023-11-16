@@ -28,7 +28,8 @@ struct LVar *locals;
 
 struct LVar *find_lvar(struct Token **tok) {
   for (struct LVar *var = locals; var; var = var->next) {
-    if (var->len == (*tok)->len && !memcmp((*tok)->str, var->name, (*tok)->len)) {
+    if (var->len == (*tok)->len &&
+        !memcmp((*tok)->str, var->name, (*tok)->len)) {
       return var;
     }
   }
@@ -56,8 +57,15 @@ void program(struct Token **tok) {
 
 // stmt = expr ";"
 //      | "return" expr ";"
+//      | "if" "(" expr ")" stmt
 struct Node *stmt(struct Token **tok) {
-  if (consume(tok, TK_RETURN)) {
+  if (equal(tok, "if")) {
+    *tok = skip(tok, "(");
+    struct Node *lhs = expr(tok);
+    *tok = skip(tok, ")");
+    struct Node *rhs = stmt(tok);
+    return new_node(ND_IF, lhs, rhs);
+  } else if (equal(tok, "return")) {
     struct Node *node = expr(tok);
     *tok = skip(tok, ";");
     return new_node(ND_RETURN, node, NULL);
@@ -168,11 +176,11 @@ struct Node *primary(struct Token **tok) {
     }
     consume(tok, TK_IDENT);
     return new_node_val(lvar->offset);
-  } else if ((*tok)->kind == TK_NUM){
+  } else if ((*tok)->kind == TK_NUM) {
     struct Node *node = new_node_num((*tok)->val);
     consume(tok, TK_NUM);
     return node;
   }
-  
+
   error("予期しないトークンです: %s", (*tok)->str);
 }

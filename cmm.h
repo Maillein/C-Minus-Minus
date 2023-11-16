@@ -12,11 +12,11 @@
 
 // トークンの種類
 enum TokenKind {
-  TK_RESERVED, // 記号
-  TK_IDENT,    // 識別子
-  TK_NUM,      // 整数トークン
-  TK_RETURN,   // return
-  TK_EOF,      // 入力の終わりを表すトークン
+  TK_OP,    // 記号
+  TK_IDENT, // 識別子
+  TK_NUM,   // 整数トークン
+  TK_KEYWD, // 予約語
+  TK_EOF,   // 入力の終わりを表すトークン
 };
 
 // トークン型
@@ -59,6 +59,7 @@ enum NodeKind {
   ND_NUM,    // 整数
   ND_LVAR,   // ローカル変数
   ND_RETURN, // リターン文
+  ND_IF,     // if文
 };
 
 // 抽象構文木のノード型
