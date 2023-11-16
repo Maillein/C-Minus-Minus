@@ -60,6 +60,7 @@ enum NodeKind {
   ND_LVAR,   // ローカル変数
   ND_RETURN, // リターン文
   ND_IF,     // if文
+  ND_WHILE,  // while文
 };
 
 // 抽象構文木のノード型
@@ -70,8 +71,8 @@ struct Node {
   int val;    // kind == ND_NUMのとき使用
   int offset; // kind == ND_LVARのとき使用
 
-  struct Node *cond;  // kind == ND_IFのとき使用
-  struct Node *stmt1; // kind == ND_IFのとき使用
+  struct Node *cond;  // kind == ND_IF | ND_WHILE のとき使用
+  struct Node *stmt1; // kind == ND_IF | ND_WHILE のとき使用
   struct Node *stmt2; // kind == ND_IFのとき使用
 };
 

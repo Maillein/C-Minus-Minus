@@ -23,12 +23,21 @@ struct Node *new_node_num(int val) {
   return node;
 }
 
-struct Node *new_node_if(struct Node *cond, struct Node *stmt1, struct Node *stmt2) {
+struct Node *new_node_if(struct Node *cond, struct Node *stmt1,
+                         struct Node *stmt2) {
   struct Node *node = calloc(1, sizeof(struct Node));
   node->kind = ND_IF;
   node->cond = cond;
   node->stmt1 = stmt1;
   node->stmt2 = stmt2;
+  return node;
+}
+
+struct Node *new_node_while(struct Node *cond, struct Node *stmt1) {
+  struct Node *node = calloc(1, sizeof(struct Node));
+  node->kind = ND_WHILE;
+  node->cond = cond;
+  node->stmt1 = stmt1;
   return node;
 }
 
@@ -67,6 +76,7 @@ void program(struct Token **tok) {
 // stmt = expr ";"
 //      | "return" expr ";"
 //      | "if" "(" expr ")" stmt ( "else" stmt )?
+//      | "while" "(" expr ")" stmt
 struct Node *stmt(struct Token **tok) {
   if (equal(tok, "if")) {
     struct Node *cond, *stmt1, *stmt2;
@@ -80,15 +90,23 @@ struct Node *stmt(struct Token **tok) {
       stmt2 = NULL;
     }
     return new_node_if(cond, stmt1, stmt2);
-  } else if (equal(tok, "return")) {
+  }
+  if (equal(tok, "while")) {
+    struct Node *cond, *stmt1;
+    *tok = skip(tok, "(");
+    cond = expr(tok);
+    *tok = skip(tok, ")");
+    stmt1 = stmt(tok);
+    return new_node_while(cond, stmt1);
+  }
+  if (equal(tok, "return")) {
     struct Node *node = expr(tok);
     *tok = skip(tok, ";");
     return new_node(ND_RETURN, node, NULL);
-  } else {
-    struct Node *node = expr(tok);
-    *tok = skip(tok, ";");
-    return node;
   }
+  struct Node *node = expr(tok);
+  *tok = skip(tok, ";");
+  return node;
 }
 
 // expr = assign

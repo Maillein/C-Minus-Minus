@@ -82,4 +82,6 @@ assert 4 'if (0) if (1) return 1; else return 2; else if (0) return 3; else retu
 assert 3 'if (0) if (0) return 1; else return 2; else if (1) return 3; else return 4; return 5;'
 assert 4 'if (0) if (0) return 1; else return 2; else if (0) return 3; else return 4; return 5;'
 
+assert 5 'a=10; while (a > 5) a = a - 1; return a;'
+
 echo OK

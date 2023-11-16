@@ -120,6 +120,12 @@ struct Token *tokenize() {
       continue;
     }
 
+    if (is_keyword(p, "while", 5)) {
+      cur = new_token(TK_KEYWD, cur, p, 5);
+      p += 5;
+      continue;
+    }
+
     if (is_ident_char1(*p)) {
       cur = new_token(TK_IDENT, cur, p, 0);
       while (is_ident_char2(*p)) {

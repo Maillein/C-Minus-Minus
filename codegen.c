@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 static int label_if;
+static int label_while;
 
 void gen_lval(struct Node *node) {
   if (node->kind != ND_LVAR) {
@@ -59,6 +60,18 @@ void gen(struct Node *node) {
     }
     printf(".Lend_if%d:\n", local_label);
     label_if++;
+    return;
+  }
+  if (node->kind == ND_WHILE) {
+    int local_label = label_while++;
+    printf(".Lbegin_while%d:\n", local_label);
+    gen(node->cond);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je .Lend_while%d\n", local_label);
+    gen(node->stmt1);
+    printf("  jmp .Lbegin_while%d\n", local_label);
+    printf(".Lend_while%d:\n", local_label);
     return;
   }
 
