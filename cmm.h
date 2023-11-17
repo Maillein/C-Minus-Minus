@@ -109,16 +109,6 @@ struct Context {
 extern struct Node *code[100];
 
 struct Node *parse(struct Token **tok);
-struct Node *func_definition(struct Token **tok, struct Context **context);
-struct Node *stmt(struct Token **tok, struct Context **context);
-struct Node *expr(struct Token **tok, struct Context **context);
-struct Node *assign(struct Token **tok, struct Context **context);
-struct Node *equality(struct Token **tok, struct Context **context);
-struct Node *relational(struct Token **tok, struct Context **context);
-struct Node *add(struct Token **tok, struct Context **context);
-struct Node *mul(struct Token **tok, struct Context **context);
-struct Node *unary(struct Token **tok, struct Context **context);
-struct Node *primary(struct Token **tok, struct Context **context);
 
 //////////////////////
 // codegen.c

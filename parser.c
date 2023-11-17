@@ -98,6 +98,17 @@ struct LVar *new_lvar(struct Token **tok, struct Context **context) {
   return lvar;
 }
 
+struct Node *func_definition(struct Token **tok, struct Context **context);
+struct Node *stmt(struct Token **tok, struct Context **context);
+struct Node *expr(struct Token **tok, struct Context **context);
+struct Node *assign(struct Token **tok, struct Context **context);
+struct Node *equality(struct Token **tok, struct Context **context);
+struct Node *relational(struct Token **tok, struct Context **context);
+struct Node *add(struct Token **tok, struct Context **context);
+struct Node *mul(struct Token **tok, struct Context **context);
+struct Node *unary(struct Token **tok, struct Context **context);
+struct Node *primary(struct Token **tok, struct Context **context);
+
 // program = func_definition
 struct Node *parse(struct Token **tok) {
   struct Context *head = calloc(1, sizeof(struct Context));
