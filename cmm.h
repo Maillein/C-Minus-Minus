@@ -48,6 +48,7 @@ struct Token *tokenize();
 
 // 抽象構文木のノードの種類
 enum NodeKind {
+  ND_PROGRAM,   // プログラムの翻訳単位
   ND_ADD,       // +
   ND_SUB,       // -
   ND_MUL,       // *
@@ -70,26 +71,6 @@ enum NodeKind {
   ND_FUNC_DEF,  // 関数定義
 };
 
-// 抽象構文木のノード型
-struct Node {
-  enum NodeKind kind;
-  struct Node *lhs;
-  struct Node *rhs;
-  int val;    // kind == ND_NUMのとき使用
-  int offset; // kind == ND_LVARのとき使用
-
-  struct Node *for_begin; // kind == ND_FOR のとき使用．for文の初期化
-  struct Node *for_after; // kind == ND_FOR のとき使用．for文の更新
-  struct Node *cond;      // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
-  struct Node *stmt1;     // kind == ND_IF | ND_WHILE のとき使用
-  struct Node *stmt2;     // kind == ND_IFのとき使用
-
-  char *func_name;   // kind == ND_FUNC_CALL のとき使用
-  struct Node *args; // kind == ND_FUNC_CALL のとき使用
-
-  int max_offset; // kind == ND_FUNC_DEF のとき使用
-};
-
 // ローカル変数の型
 struct LVar {
   struct LVar *next; // 次の変数
@@ -103,6 +84,28 @@ struct Context {
   struct LVar *locals;
   int locals_offset;
   int max_local_offset;
+};
+
+// 抽象構文木のノード型
+struct Node {
+  enum NodeKind kind;
+  struct Node *lhs;
+  struct Node *rhs;
+  int val;           // kind == ND_NUMのとき使用
+  struct LVar *lvar; // kind == ND_LVARのとき使用
+
+  struct Node *init;   // kind == ND_FOR のとき使用．for文の初期化
+  struct Node *update; // kind == ND_FOR のとき使用．for文の更新
+  struct Node *cond;   // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
+  struct Node *stmt1;  // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
+  struct Node *stmt2;  // kind == ND_IFのとき使用
+
+  char *func_name;   // kind == ND_FUNC_CALL | ND_FUNC_DEF のとき使用
+  struct Node *args; // kind == ND_FUNC_CALL のとき使用
+
+  int stack_size;      // kind == ND_FUNC_DEF のとき使用
+  int nparams;         // kind == ND_FUNC_DEF のとき使用
+  struct LVar *params; // kind==ND_FUNC_DEF のとき使用
 };
 
 // プログラム全体

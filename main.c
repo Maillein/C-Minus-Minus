@@ -17,7 +17,6 @@ int main(int argc, char **argv) {
 
   // アセンブリの前半を出力
   printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
 
   codegen(program);
 

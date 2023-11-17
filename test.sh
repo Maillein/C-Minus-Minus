@@ -159,4 +159,55 @@ assert 55 'main() {
 # assert 20 'main() { i = 10; { i = 20; return i; } return 30; }'
 # assert 4 'main() { a = 4; { a = 15; put_num(a); } { put_num(a); } return a; }'
 
+assert 13 'foo(x,y) { z = 10; return x + y + z; } main() { x = 1; y = 2; return foo(x, y); }'
+assert 0 '
+fib(x) {
+  if (x == 0) {
+    return 0;
+  } else if (x == 1) {
+    return 1;
+  } else {
+    return fib(x - 1) + fib(x - 2);
+  }
+}
+main() {
+  for (i = 0; i < 20; i = i + 1) {
+    put_num(fib(i));
+  }
+  return 0;
+}
+'
+
+assert 12 '
+tarai(x, y, z) {
+  if (x <= y) {
+    return y;
+  } else {
+    return tarai(tarai(x - 1, y, z), tarai(y - 1, z, x), tarai(z - 1, x, y));
+  }
+}
+main() {
+  x = 12;
+  y = 6;
+  z = 0;
+  return tarai(x, y, z);
+}
+'
+
+assert 3 '
+mean6(a, b, c, d, e, f) {
+  s1 = a + b;
+  s2 = c + d;
+  print6(a, b, c, d, e, f);
+  s3 = e + f;
+  s4 = s1 + s2 + s3;
+  return s4 / 6;
+}
+main() {
+  a = 2;
+  b = 3;
+  return mean6(b - a, a, b, a + a, a + b, a * b);
+}
+'
+
 echo OK

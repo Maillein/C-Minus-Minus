@@ -42,8 +42,8 @@ int hello() {
   return 0;
 }
 
-int put_num(int num) {
-  printf("num = %d\n", num);
+int put_num(long num) {
+  printf("num = %ld\n", num);
   return 0;
 }
 

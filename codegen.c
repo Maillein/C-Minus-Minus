@@ -15,11 +15,46 @@ void gen_lval(struct Node *node) {
     error("左辺値が変数ではありません");
   }
 
-  printf("  lea rdi, [rbp-%d]\n", node->offset);
+  printf("  lea rdi, [rbp-%d]\n", node->lvar->offset);
 }
 
 // 「文」を生成する．assign, returnを除き，RAXに値を残さない．
 void gen_stmt(struct Node *node) {
+  if (node->kind == ND_FUNC_DEF) {
+    label_func_name = node->func_name;
+    printf(".global %s\n", label_func_name);
+    printf("%s:\n", label_func_name);
+
+    // プロローグ
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    node->stack_size += node->stack_size % 16; // ローカル変数のアライメント
+    printf("  sub rsp, %d\n",
+           node->stack_size); // ローカル変数の領域(16byte境界でアライメント)
+    for (int i = 1; i <= node->nparams; i++) {
+      if (i == 1) {
+        printf("  mov [rbp-8], rdi\n");
+      } else if (i == 2) {
+        printf("  mov [rbp-16], rsi\n");
+      } else if (i == 3) {
+        printf("  mov [rbp-24], rdx\n");
+      } else if (i == 4) {
+        printf("  mov [rbp-32], rcx\n");
+      } else if (i == 5) {
+        printf("  mov [rbp-40], r8\n");
+      } else if (i == 6) {
+        printf("  mov [rbp-48], r9\n");
+      }
+    }
+
+    gen_stmt(node->rhs);
+
+    // エピローグ
+    printf(".L_%s_epilogue:\n", label_func_name);
+    printf("  leave\n");
+    printf("  ret\n");
+    return;
+  }
   if (node->kind == ND_ASSIGN) {
     gen_expr(node);
     return;
@@ -62,8 +97,8 @@ void gen_stmt(struct Node *node) {
   }
   if (node->kind == ND_FOR) {
     int local_label = label_for++;
-    if (node->for_begin) {
-      gen_expr(node->for_begin);
+    if (node->init) {
+      gen_expr(node->init);
     }
 
     printf(".Lbegin_for_%d:\n", local_label);
@@ -73,15 +108,15 @@ void gen_stmt(struct Node *node) {
       printf("  cmp rax, 0\n");
       printf("  je .Lend_for_%d\n", local_label);
       gen_stmt(node->stmt1);
-      if (node->for_after) {
-        gen_expr(node->for_after);
+      if (node->update) {
+        gen_expr(node->update);
       }
       printf("  jmp .Lbegin_for_%d\n", local_label);
       printf(".Lend_for_%d:\n", local_label);
     } else {
       gen_stmt(node->stmt1);
-      if (node->for_after) {
-        gen_expr(node->for_after);
+      if (node->update) {
+        gen_expr(node->update);
       }
       printf("  jmp .Lbegin_for_%d\n", local_label);
     }
@@ -181,26 +216,8 @@ void gen_expr(struct Node *node) {
   }
 }
 
-
 void codegen(struct Node *node) {
-  if (node->kind != ND_FUNC_DEF) {
-    error("関数定義ではありません");
+  for (; node; node = node->rhs) {
+    gen_stmt(node->lhs);
   }
-  label_func_name = node->func_name;
-  printf(".global %s\n", label_func_name);
-  printf("%s:\n", label_func_name);
-
-  // プロローグ
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  node->max_offset += node->max_offset % 16; // ローカル変数のアライメント
-  printf("  sub rsp, %d\n", node->max_offset); // ローカル変数の領域(16byte境界でアライメント)
-
-  gen_stmt(node->rhs);
-
-  // エピローグ
-  printf(".L_%s_epilogue:\n", label_func_name);
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
 }

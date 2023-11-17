@@ -22,10 +22,10 @@ struct Node *new_node(enum NodeKind kind, struct Node *lhs, struct Node *rhs) {
   return node;
 }
 
-struct Node *new_node_var(int offset) {
+struct Node *new_node_var(struct LVar *lvar) {
   struct Node *node = calloc(1, sizeof(struct Node));
   node->kind = ND_LVAR;
-  node->offset = offset;
+  node->lvar = lvar;
   return node;
 }
 
@@ -58,9 +58,9 @@ struct Node *new_node_for(struct Node *for_begin, struct Node *cond,
                           struct Node *for_after, struct Node *stmt1) {
   struct Node *node = calloc(1, sizeof(struct Node));
   node->kind = ND_FOR;
-  node->for_begin = for_begin;
+  node->init = for_begin;
   node->cond = cond;
-  node->for_after = for_after;
+  node->update = for_after;
   node->stmt1 = stmt1;
   return node;
 }
@@ -109,16 +109,23 @@ struct Node *mul(struct Token **tok, struct Context **context);
 struct Node *unary(struct Token **tok, struct Context **context);
 struct Node *primary(struct Token **tok, struct Context **context);
 
-// program = func_definition
+// program = func_definition*
 struct Node *parse(struct Token **tok) {
-  struct Context *head = calloc(1, sizeof(struct Context));
-  struct Node *node = func_definition(tok, &head);
-  node->max_offset = head->max_local_offset;
-  return node;
+  struct Node *head = new_node(ND_PROGRAM, NULL, NULL);
+  struct Node **tail = &head;
+  while (!at_eof(tok)) {
+    (*tail)->rhs = new_node(ND_PROGRAM, NULL, NULL);
+    tail = &(*tail)->rhs;
+    struct Context *cont_head = calloc(1, sizeof(struct Context));
+    struct Context **context = &cont_head;
+    (*tail)->lhs = func_definition(tok, context);
+  }
+  return head->rhs;
 }
 
 // func_definition = ident "(" ( ident ( "," ident )* )? ")" "{" stmt* "}"
-struct Node *func_definition(struct Token **tok, struct Context **context) {
+struct Node *func_definition(struct Token **tok, struct Context ** context) {
+  // 関数名をパース
   if ((*tok)->kind != TK_IDENT) {
     error_at((*tok)->str, "関数定義ではありません．");
   }
@@ -127,13 +134,27 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
   node->func_name = calloc((*tok)->len + 1, sizeof(char));
   memcpy(node->func_name, (*tok)->str, (*tok)->len);
   consume(tok, TK_IDENT);
+
+  // 関数の引数をパース
   *tok = skip(tok, "(");
+  context_push(context);
   while (!equal(tok, ")")) {
+    new_lvar(tok, context);
+    node->nparams++;
+    consume(tok, TK_IDENT);
+    if (check(tok, ",")) {
+      *tok = skip(tok, ",");
+    }
   }
+
+  // 関数の本体をパース
   if (!check(tok, "{")) {
     error_at((*tok)->str, "'{'ではありません．");
   }
   node->rhs = stmt(tok, context);
+
+  context_pop(context);
+  node->stack_size = (*context)->max_local_offset;
   return node;
 }
 
@@ -313,7 +334,7 @@ struct Node *primary(struct Token **tok, struct Context **context) {
     *tok = skip(tok, ")");
     return node;
   } else if ((*tok)->kind == TK_IDENT) {
-    if (equal(&(*tok)->next, "(")) {
+    if (equal(&(*tok)->next, "(")) { // 関数呼び出しのパース
       // 関数名をパース
       struct Node *node = new_node(ND_FUNC_CALL, NULL, NULL);
       node->func_name = calloc((*tok)->len + 1, sizeof(char));
@@ -331,13 +352,13 @@ struct Node *primary(struct Token **tok, struct Context **context) {
       node->args = head.rhs;
 
       return node;
-    } else {
+    } else { // 変数のパース
       struct LVar *lvar = find_lvar(tok, context);
       if (lvar == NULL) {
         lvar = new_lvar(tok, context);
       }
       consume(tok, TK_IDENT);
-      return new_node_var(lvar->offset);
+      return new_node_var(lvar);
     }
   } else if ((*tok)->kind == TK_NUM) {
     struct Node *node = new_node_num((*tok)->val);
