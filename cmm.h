@@ -115,6 +115,3 @@ struct Node *parse(struct Token **tok);
 //////////////////////
 
 void codegen(struct Node *node);
-void gen_stmt(struct Node *node);
-void gen_expr(struct Node *node);
-void gen_lval(struct Node *node);

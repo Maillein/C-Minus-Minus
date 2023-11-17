@@ -6,6 +6,10 @@ static int label_while;
 static int label_for;
 static char *label_func_name;
 
+void gen_stmt(struct Node *node);
+void gen_expr(struct Node *node);
+void gen_lval(struct Node *node);
+
 void gen_lval(struct Node *node) {
   if (node->kind != ND_LVAR) {
     error("左辺値が変数ではありません");
