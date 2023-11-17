@@ -1,4 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
+
+int my_assert(int expect, int num) {
+  if (expect != num) {
+    printf("expect: %d, actual: %d\n", expect, num);
+    exit(1);
+  }
+  return 0;
+}
 
 int arg0() {
   return 19;
@@ -30,6 +39,11 @@ int arg6(int a, int b, int c, int d, int e, int f) {
 
 int hello() {
   printf("Hello from hello\n");
+  return 0;
+}
+
+int put_num(int num) {
+  printf("num = %d\n", num);
   return 0;
 }
 

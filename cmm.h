@@ -86,14 +86,9 @@ struct Node {
 
   char *func_name;   // kind == ND_FUNC_CALL のとき使用
   struct Node *args; // kind == ND_FUNC_CALL のとき使用
+
+  int max_offset; // kind == ND_FUNC_DEF のとき使用
 };
-
-struct Node *new_node(enum NodeKind kind, struct Node *lhs, struct Node *rhs);
-struct Node *new_node_val(int offset);
-struct Node *new_node_num(int val);
-
-// プログラム全体
-extern struct Node *code[100];
 
 // ローカル変数の型
 struct LVar {
@@ -103,17 +98,27 @@ struct LVar {
   int offset;        // RBPからのオフセット
 };
 
+struct Context {
+  struct Context *next;
+  struct LVar *locals;
+  int locals_offset;
+  int max_local_offset;
+};
+
+// プログラム全体
+extern struct Node *code[100];
+
 struct Node *parse(struct Token **tok);
-struct Node *func_definition(struct Token **tok);
-struct Node *stmt(struct Token **tok);
-struct Node *expr(struct Token **tok);
-struct Node *assign(struct Token **tok);
-struct Node *equality(struct Token **tok);
-struct Node *relational(struct Token **tok);
-struct Node *add(struct Token **tok);
-struct Node *mul(struct Token **tok);
-struct Node *unary(struct Token **tok);
-struct Node *primary(struct Token **tok);
+struct Node *func_definition(struct Token **tok, struct Context **context);
+struct Node *stmt(struct Token **tok, struct Context **context);
+struct Node *expr(struct Token **tok, struct Context **context);
+struct Node *assign(struct Token **tok, struct Context **context);
+struct Node *equality(struct Token **tok, struct Context **context);
+struct Node *relational(struct Token **tok, struct Context **context);
+struct Node *add(struct Token **tok, struct Context **context);
+struct Node *mul(struct Token **tok, struct Context **context);
+struct Node *unary(struct Token **tok, struct Context **context);
+struct Node *primary(struct Token **tok, struct Context **context);
 
 //////////////////////
 // codegen.c

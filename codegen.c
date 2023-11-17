@@ -189,7 +189,8 @@ void codegen(struct Node *node) {
   // プロローグ
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 0x100\n"); // ローカル変数の領域(16byte境界でアライメント)
+  node->max_offset += node->max_offset % 16; // ローカル変数のアライメント
+  printf("  sub rsp, %d\n", node->max_offset); // ローカル変数の領域(16byte境界でアライメント)
 
   gen_stmt(node->rhs);
 

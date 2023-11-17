@@ -112,8 +112,10 @@ assert 3 'main() { 1; { 2; } return 3; }'
 # assert 3 'main() { 1; } { 2; } { 3; }'
 assert 45 '
 main() {
+  i = 100;
   sum = 0;
   for (i = 0; i <= 10; i = i + 1) { 
+    put_num(i);
     if (i >= 5) { 
       sum = sum + i;
     }
@@ -139,5 +141,22 @@ assert 0 'main() { return print6(1, 2, 3, 4, 5, 6); }'
 assert 6 'main() { a = b = c = d = e = f = 1; return arg6(a, b, c, d, e, f); }'
 assert 10 'main() { a = b = c = d = e = f = 1; return arg6(a, b + c, c + d + e, d, h = (g = e = 1), arg2(1, 1)); }'
 assert 1 'main() { return arg1(arg1(arg1(arg1(1)))); }'
+
+assert 55 'main() { 
+  s = 0; 
+  { i = 10; my_assert(10, i); }
+  { i = 20; my_assert(20, i); } 
+  my_assert(0, s);
+  for (i = 0; i <= 10; i = i + 1) {
+    s = s + i;
+  }
+  i = 30;
+  my_assert(30, i);
+  return s;
+}'
+
+# 変数宣言の構文が追加されたら，以下2個は通るようになるはず
+# assert 20 'main() { i = 10; { i = 20; return i; } return 30; }'
+# assert 4 'main() { a = 4; { a = 15; put_num(a); } { put_num(a); } return a; }'
 
 echo OK
