@@ -308,7 +308,7 @@ struct Node *add(struct Token **tok, struct Context **context) {
   }
 }
 
-// mul = unary ( "*" unary | "/" unary )*
+// mul = unary ( "*" unary | "/" unary | "%" unary )*
 struct Node *mul(struct Token **tok, struct Context **context) {
   struct Node *node = unary(tok, context);
 
@@ -317,6 +317,8 @@ struct Node *mul(struct Token **tok, struct Context **context) {
       node = new_node(ND_MUL, node, unary(tok, context));
     } else if (equal(tok, "/")) {
       node = new_node(ND_DIV, node, unary(tok, context));
+    } else if (equal(tok, "%")) {
+      node = new_node(ND_MOD, node, unary(tok, context));
     } else {
       return node;
     }

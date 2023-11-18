@@ -29,6 +29,7 @@ assert 20 'main() { return 4 * (3 + 2); }'
 assert 4 'main() { return (8 + 4) / 3; }'
 assert 10 'main() { return -10 + 20; }'
 assert 16 'main() { return -4*-4; }'
+assert 3 'main() { return 10 % 7; }'
 
 assert 0 'main() { return 0==1; }'
 assert 1 'main() { return 42==42; }'
@@ -222,6 +223,18 @@ assert 1 'main() { if (put_num(123)||put_num(456)) return 1; else return 2; }'
 
 assert 1 'main() { return put_num(1) && put_num(2) && put_num(3); }'
 assert 0 'main() { return put_num(1) && put_num(0) && put_num(3); }'
+
+assert 0 '
+fizbuz(x) { 
+  for (i = 1; i <= x; i = i + 1) {
+    if (i % 3 == 0 && i % 5 == 0) p_fizbuz();
+    else if (i % 3 == 0)  p_fiz();
+    else if (i % 5 == 0)  p_buz();
+    else                  put_num(i);
+  }
+  return 0; 
+}
+main() { return fizbuz(30); }'
 
 
 echo OK

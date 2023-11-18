@@ -68,17 +68,24 @@ void gen_stmt(struct Node *node) {
   }
   if (node->kind == ND_IF) {
     int local_label = label_if++;
+    printf("# begin if cond (%d)\n", local_label);
     gen_expr(node->cond);
-    // printf("  pop rax\n");
+    printf("# end if cond (%d)\n", local_label);
     printf("  cmp rax, 0\n");
     if (node->stmt2 != NULL) {
       printf("  je .Lelse_%d\n", local_label);
+      printf("# begin if stmt1 (%d)\n", local_label);
       gen_stmt(node->stmt1);
-      printf("  je  .Lend_if_%d\n", local_label);
+      printf("# end if stmt1 (%d)\n", local_label);
+      printf("  jmp  .Lend_if_%d\n", local_label);
       printf(".Lelse_%d:\n", local_label);
+      printf("# end if stmt2 (%d)\n", local_label);
       gen_stmt(node->stmt2);
+      printf("# end if stmt2 (%d)\n", local_label);
     } else {
+      printf("  # begin if stmt1 (%d)\n", local_label);
       printf("  je .Lend_if_%d\n", local_label);
+      printf("# end if stmt1 (%d)\n", local_label);
       gen_stmt(node->stmt1);
     }
     printf(".Lend_if_%d:\n", local_label);
@@ -100,18 +107,26 @@ void gen_stmt(struct Node *node) {
   if (node->kind == ND_FOR) {
     int local_label = label_for++;
     if (node->init) {
+      printf("# begin for init\n");
       gen_expr(node->init);
+      printf("# end for init\n");
     }
 
     printf(".Lbegin_for_%d:\n", local_label);
     if (node->cond) {
+      printf("# begin for cond\n");
       gen_expr(node->cond);
       // printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je .Lend_for_%d\n", local_label);
+      printf("  # end for cond\n");
+      printf("  # begin for stmt\n");
       gen_stmt(node->stmt1);
+      printf("# end for stmt\n");
       if (node->update) {
+        printf("# begin for update\n");
         gen_expr(node->update);
+        printf("# end for update\n");
       }
       printf("  jmp .Lbegin_for_%d\n", local_label);
       printf(".Lend_for_%d:\n", local_label);
@@ -229,6 +244,10 @@ void gen_expr(struct Node *node) {
   } else if (node->kind == ND_DIV) {
     printf("  cqo\n");
     printf("  idiv rax, rdi\n");
+  } else if (node->kind == ND_MOD) {
+    printf("  cqo\n");
+    printf("  idiv rax, rdi\n");
+    printf("  mov  rax, rdx\n");
   } else if (node->kind == ND_EQ) {
     printf("  cmp rax, rdi\n");
     printf("  sete al\n");

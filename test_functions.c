@@ -42,6 +42,21 @@ int hello() {
   return 0;
 }
 
+int p_fiz() {
+  printf("fizz\n");
+  return 0;
+}
+
+int p_buz() {
+  printf("buzz\n");
+  return 0;
+}
+
+int p_fizbuz() {
+  printf("fizzbuzz\n");
+  return 0;
+}
+
 int put_num(long num) {
   printf("num = %ld\n", num);
   return num;
