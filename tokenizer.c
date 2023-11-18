@@ -96,7 +96,8 @@ struct Token *tokenize() {
     }
 
     if (memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
-        memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0) {
+        memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||
+        memcmp(p, "||", 2) == 0 || memcmp(p, "&&", 2) == 0) {
       cur = new_token(TK_OP, cur, p, 2);
       p += 2;
       continue;

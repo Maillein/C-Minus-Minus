@@ -210,4 +210,18 @@ main() {
 }
 '
 
+assert 2 'main() { if (put_num(0) && put_num(0)) return 1; else return 2; }'
+assert 2 'main() { if (put_num(0) && put_num(456)) return 1; else return 2; }'
+assert 2 'main() { if (put_num(123) && put_num(0)) return 1; else return 2; }'
+assert 1 'main() { if (put_num(123)&&put_num(456)) return 1; else return 2; }'
+
+assert 2 'main() { if (put_num(0) || put_num(0)) return 1; else return 2; }'
+assert 1 'main() { if (put_num(0) || put_num(456)) return 1; else return 2; }'
+assert 1 'main() { if (put_num(123) || put_num(0)) return 1; else return 2; }'
+assert 1 'main() { if (put_num(123)||put_num(456)) return 1; else return 2; }'
+
+assert 1 'main() { return put_num(1) && put_num(2) && put_num(3); }'
+assert 0 'main() { return put_num(1) && put_num(0) && put_num(3); }'
+
+
 echo OK

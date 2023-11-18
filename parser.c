@@ -124,7 +124,7 @@ struct Node *parse(struct Token **tok) {
 }
 
 // func_definition = ident "(" ( ident ( "," ident )* )? ")" "{" stmt* "}"
-struct Node *func_definition(struct Token **tok, struct Context ** context) {
+struct Node *func_definition(struct Token **tok, struct Context **context) {
   // 関数名をパース
   if ((*tok)->kind != TK_IDENT) {
     error_at((*tok)->str, "関数定義ではありません．");
@@ -236,9 +236,18 @@ struct Node *stmt(struct Token **tok, struct Context **context) {
   return node;
 }
 
-// expr = assign
+// expr = assign ( "==" assign | "&&" assign )*
 struct Node *expr(struct Token **tok, struct Context **context) {
-  return assign(tok, context);
+  struct Node *node = assign(tok, context);
+  for (;;) {
+    if (equal(tok, "||")) {
+      node = new_node(ND_OR, node, assign(tok, context));
+    } else if (equal(tok, "&&")) {
+      node = new_node(ND_AND, node, assign(tok, context));
+    } else {
+      return node;
+    }
+  }
 }
 
 // assign  = equality ( "=" assign )?

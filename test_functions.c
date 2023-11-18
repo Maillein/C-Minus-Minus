@@ -44,7 +44,7 @@ int hello() {
 
 int put_num(long num) {
   printf("num = %ld\n", num);
-  return 0;
+  return num;
 }
 
 int print6(int a, int b, int c, int d, int e, int f) {

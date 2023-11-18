@@ -57,6 +57,8 @@ enum NodeKind {
   ND_NE,        // !=
   ND_LT,        // <
   ND_LE,        // <=
+  ND_OR,        // ||
+  ND_AND,       // &&
   ND_ASSIGN,    // 代入
   ND_NUM,       // 整数
   ND_LVAR,      // ローカル変数

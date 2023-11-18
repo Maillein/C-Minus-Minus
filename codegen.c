@@ -4,6 +4,8 @@
 static int label_if;
 static int label_while;
 static int label_for;
+static int label_or;
+static int label_and;
 static char *label_func_name;
 
 void gen_stmt(struct Node *node);
@@ -177,6 +179,36 @@ void gen_expr(struct Node *node) {
       }
     }
     printf("  call %s\n", node->func_name);
+    return;
+  }
+  if (node->kind == ND_OR) {
+    int local_label = label_or++;
+    gen_expr(node->lhs);
+    printf("  cmp rax, 0\n");
+    printf("  jne .L_or_true_%d\n", local_label); // 左辺が真だったら，抜ける
+    gen_expr(node->rhs);
+    printf("  cmp rax, 0\n");
+    printf("  jne .L_or_true_%d\n", local_label); // 右辺が真だったら，抜ける
+    printf("  mov rax, 0\n");
+    printf("  jmp .L_or_end_%d\n", local_label);
+    printf(".L_or_true_%d:\n", local_label);
+    printf("  mov rax, 1\n");
+    printf(".L_or_end_%d:\n", local_label);
+    return;
+  }
+  if (node->kind == ND_AND) {
+    int local_label = label_and++;
+    gen_expr(node->lhs);
+    printf("  cmp rax, 0\n");
+    printf("  je .L_and_false_%d\n", local_label); // 左辺が偽だったら，抜ける
+    gen_expr(node->rhs);
+    printf("  cmp rax, 0\n");
+    printf("  je .L_and_false_%d\n", local_label); // 右辺が真だったら，抜ける
+    printf("  mov rax, 1\n");
+    printf("  jmp .L_and_end_%d\n", local_label);
+    printf(".L_and_false_%d:\n", local_label);
+    printf("  mov rax, 0\n");
+    printf(".L_and_end_%d:\n", local_label);
     return;
   }
 
