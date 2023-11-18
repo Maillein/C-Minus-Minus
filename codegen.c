@@ -168,12 +168,21 @@ void gen_expr(struct Node *node) {
     return;
   }
   if (node->kind == ND_LVAR) {
+    // fprintf(stderr, "# node->lvar->name: %s\n", node->lvar->name);
+    // fprintf(stderr, "# node->type->ty: ");
+    // for (struct Type *t = node->->type; t != NULL; t = t->ptr_to) {
+    //   if (t->ty == INT) {
+    //     fprintf(stderr, "INT");
+    //   } else {
+    //     fprintf(stderr, "PTR -> ");
+    //   }
+    // }
+    // fprintf(stderr, "\n");
     gen_lval(node, "rdi");
     printf("  mov rax, [rdi]\n");
     return;
   }
   if (node->kind == ND_ADDR) {
-    printf("# ND_ADDR\n");
     gen_lval(node->lhs, "rax");
     return;
   }

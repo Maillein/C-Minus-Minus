@@ -36,17 +36,19 @@ struct Node *new_node_unary(enum NodeKind kind, struct Node *lhs) {
   return node;
 }
 
-struct Node *new_node_var(struct LVar *lvar) {
+struct Node *new_node_var(struct LVar *lvar, struct Type *type) {
   struct Node *node = calloc(1, sizeof(struct Node));
   node->kind = ND_LVAR;
   node->lvar = lvar;
+  node->type = type;
   return node;
 }
 
-struct Node *new_node_num(int val) {
+struct Node *new_node_num(int val, struct Type *type) {
   struct Node *node = calloc(1, sizeof(struct Node));
   node->kind = ND_NUM;
   node->val = val;
+  node->type = type;
   return node;
 }
 
@@ -99,17 +101,27 @@ struct LVar *find_lvar(struct Token **tok, struct Context **context) {
   return NULL;
 }
 
-struct LVar *new_lvar(struct Token **tok, struct Context **context) {
+struct LVar *new_lvar(struct Token **tok, struct Context **context,
+                      struct Type *type) {
   struct LVar *lvar = calloc(1, sizeof(struct LVar));
   lvar->next = (*context)->locals;
-  lvar->name = (*tok)->str;
+  lvar->name = calloc((*tok)->len + 1, sizeof(char));
   lvar->len = (*tok)->len;
+  memcpy(lvar->name, (*tok)->str, lvar->len);
   lvar->offset = (*context)->locals_offset = (*context)->locals_offset + 8;
+  lvar->type = type;
   if ((*context)->max_local_offset < (*context)->locals_offset) {
     (*context)->max_local_offset = (*context)->locals_offset;
   }
   (*context)->locals = lvar;
   return lvar;
+}
+
+struct Type *new_type(enum TypeKind kind, struct Type *ptr_to) {
+  struct Type *type = calloc(1, sizeof(struct Type));
+  type->kind = kind;
+  type->ptr_to = ptr_to;
+  return type;
 }
 
 struct Node *func_definition(struct Token **tok, struct Context **context);
@@ -122,6 +134,7 @@ struct Node *add(struct Token **tok, struct Context **context);
 struct Node *mul(struct Token **tok, struct Context **context);
 struct Node *unary(struct Token **tok, struct Context **context);
 struct Node *primary(struct Token **tok, struct Context **context);
+struct Node *var_delaration(struct Token **tok, struct Context **context);
 
 // program = func_definition*
 struct Node *parse(struct Token **tok) {
@@ -137,7 +150,8 @@ struct Node *parse(struct Token **tok) {
   return head->rhs;
 }
 
-// func_definition = "int" ident "(" ( "int" ident ( "," "int" ident )* )? ")" "{" stmt* "}"
+// func_definition = "int" ident "(" ( "int" ident ( "," "int" ident )* )? ")"
+// "{" stmt* "}"
 struct Node *func_definition(struct Token **tok, struct Context **context) {
   *tok = skip(tok, "int"); // 関数の返り値は必ずint
   // 関数名をパース
@@ -154,10 +168,9 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
   *tok = skip(tok, "(");
   context_push(context);
   while (!equal(tok, ")")) {
-    *tok = skip(tok, "int"); // 引数は必ずint
-    new_lvar(tok, context);
+    // *tok = skip(tok, "int"); // 引数は必ずint
+    var_delaration(tok, context);
     node->nparams++;
-    consume(tok, TK_IDENT);
     if (check(tok, ",")) {
       *tok = skip(tok, ",");
     }
@@ -180,7 +193,7 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
 //      | "if" "(" expr ")" stmt ( "else" stmt )?
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//      | "int" ident ";"
+//      | var_delaration ";"
 struct Node *stmt(struct Token **tok, struct Context **context) {
   if (equal(tok, "if")) {
     struct Node *cond, *stmt1, *stmt2;
@@ -245,11 +258,8 @@ struct Node *stmt(struct Token **tok, struct Context **context) {
     context_pop(context);
     return head.rhs;
   }
-  if (equal(tok, "int")) {
-    new_lvar(tok, context);
-    consume(tok, TK_IDENT);
-    *tok = skip(tok, ";");
-    return new_node(ND_VAR_DEF);
+  if (check(tok, "int")) {
+    return var_delaration(tok, context);
   }
   if (equal(tok, ";")) {
     return new_node(ND_EMPTY);
@@ -355,7 +365,7 @@ struct Node *unary(struct Token **tok, struct Context **context) {
   if (equal(tok, "+")) {
     return primary(tok, context);
   } else if (equal(tok, "-")) {
-    return new_node_binary(ND_SUB, new_node_num(0), primary(tok, context));
+    return new_node_binary(ND_SUB, new_node_num(0, new_type(INT, NULL)), primary(tok, context));
   } else if (equal(tok, "&")) {
     return new_node_unary(ND_ADDR, unary(tok, context));
   } else if (equal(tok, "*")) {
@@ -399,14 +409,30 @@ struct Node *primary(struct Token **tok, struct Context **context) {
         // lvar = new_lvar(tok, context);
       }
       consume(tok, TK_IDENT);
-      return new_node_var(lvar);
+      return new_node_var(lvar, lvar->type);
     }
   } else if ((*tok)->kind == TK_NUM) {
-    struct Node *node = new_node_num((*tok)->val);
+    struct Node *node = new_node_num((*tok)->val, new_type(INT, NULL));
     consume(tok, TK_NUM);
     return node;
   }
 
   error_at((*tok)->str, "予期しないトークンです: %s", (*tok)->str);
   return NULL; // unreachable
+}
+
+struct Node *var_delaration(struct Token **tok, struct Context **context) {
+  *tok = skip(tok, "int");
+  struct Type *type = calloc(1, sizeof(struct Type));
+  type->kind = INT;
+  type->ptr_to = NULL;
+  while (equal(tok, "*")) {
+    struct Type *t = calloc(1, sizeof(struct Type));
+    t->kind = PTR;
+    t->ptr_to = type;
+    type = t;
+  }
+  new_lvar(tok, context, type);
+  consume(tok, TK_IDENT);
+  return new_node(ND_VAR_DEF);
 }

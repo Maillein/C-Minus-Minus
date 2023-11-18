@@ -77,12 +77,24 @@ enum NodeKind {
   ND_VAR_DEF,   // 変数定義
 };
 
-// ローカル変数の型
+enum TypeKind {
+  INT,
+  PTR,
+};
+
+// 式の型
+struct Type {
+  enum TypeKind kind;
+  struct Type *ptr_to;
+};
+
+// ローカル変数の情報
 struct LVar {
   struct LVar *next; // 次の変数
   char *name;        // 変数名
   int len;           // 変数名の長さ
   int offset;        // RBPからのオフセット
+  struct Type *type; // 型
 };
 
 struct Context {
@@ -99,6 +111,7 @@ struct Node {
   struct Node *rhs;
   int val;           // kind == ND_NUMのとき使用
   struct LVar *lvar; // kind == ND_LVARのとき使用
+  struct Type *type; // 型
 
   struct Node *init;   // kind == ND_FOR のとき使用．for文の初期化
   struct Node *update; // kind == ND_FOR のとき使用．for文の更新
