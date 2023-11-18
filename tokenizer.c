@@ -103,7 +103,7 @@ struct Token *tokenize() {
       continue;
     }
 
-    if (strchr(";+-*/%()<>={},", *p)) {
+    if (strchr(";+-*/%()<>={},&", *p)) {
       cur = new_token(TK_OP, cur, p++, 1);
       continue;
     }
@@ -133,6 +133,12 @@ struct Token *tokenize() {
     }
 
     if (is_keyword(p, "for", 3)) {
+      cur = new_token(TK_KEYWD, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
+    if (is_keyword(p, "int", 3)) {
       cur = new_token(TK_KEYWD, cur, p, 3);
       p += 3;
       continue;

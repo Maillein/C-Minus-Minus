@@ -72,6 +72,9 @@ enum NodeKind {
   ND_FUNC_CALL, // 関数呼び出し
   ND_FUNC_ARG,  // 関数の引数
   ND_FUNC_DEF,  // 関数定義
+  ND_ADDR,      // アドレス演算
+  ND_DEREF,     // 参照
+  ND_VAR_DEF,   // 変数定義
 };
 
 // ローカル変数の型

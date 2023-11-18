@@ -10,14 +10,21 @@ static char *label_func_name;
 
 void gen_stmt(struct Node *node);
 void gen_expr(struct Node *node);
-void gen_lval(struct Node *node);
 
-void gen_lval(struct Node *node) {
-  if (node->kind != ND_LVAR) {
-    error("左辺値が変数ではありません");
+// アドレスをrdiレジスタに生成しているのはまずいかも?
+void gen_lval(struct Node *node, char *reg) {
+  if (node->kind == ND_LVAR) {
+    printf("  lea %s, [rbp-%d]\n", reg, node->lvar->offset);
+    return;
   }
-
-  printf("  lea rdi, [rbp-%d]\n", node->lvar->offset);
+  if (node->kind == ND_DEREF) {
+    printf("  push rax\n");
+    gen_expr(node->lhs);
+    printf("  mov %s, rax\n", reg);
+    printf("  pop rax\n");
+    return;
+  }
+  error("左辺値が変数ではありません");
 }
 
 // 「文」を生成する．assign, returnを除き，RAXに値を残さない．
@@ -161,13 +168,23 @@ void gen_expr(struct Node *node) {
     return;
   }
   if (node->kind == ND_LVAR) {
-    gen_lval(node);
+    gen_lval(node, "rdi");
     printf("  mov rax, [rdi]\n");
+    return;
+  }
+  if (node->kind == ND_ADDR) {
+    printf("# ND_ADDR\n");
+    gen_lval(node->lhs, "rax");
+    return;
+  }
+  if (node->kind == ND_DEREF) {
+    gen_expr(node->lhs);
+    printf("  mov rax, [rax]\n");
     return;
   }
   if (node->kind == ND_ASSIGN) {
     gen_expr(node->rhs);
-    gen_lval(node->lhs);
+    gen_lval(node->lhs, "rdi");
     printf("  mov [rdi], rax\n");
     return;
   }
