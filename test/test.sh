@@ -3,10 +3,10 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./cmm "$input" > tmp.s
-  gcc -c -o test_functions.o test_functions.c
-  gcc -g -o tmp tmp.s test_functions.o
-  ./tmp
+  build/cmm "$input" > test/tmp.s
+  gcc -c -o test/test_functions.o test/test_functions.c
+  gcc -g -o test/tmp test/tmp.s test/test_functions.o
+  ./test/tmp
   actual="$?"
 
   if [ "$actual" = "$expected" ]; then

@@ -1,16 +1,11 @@
-CFLAGS=-std=c11 -g -static
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+build:
+	[ -d build ] || cmake -S . -B build
+	cmake --build build
 
-cmm: $(OBJS)
-	$(CC) -o cmm $(OBJS) $(LDFLAGS)
-
-$(OBJS): cmm.h
-
-test: cmm 
-	./test.sh
+test:
+	./test/test.sh
 
 clean:
-	rm -f cmm *.o *~ tmp*
+	-@rm -rf build
 
-.PHONY: test clean
+.PHONY: build test clean
