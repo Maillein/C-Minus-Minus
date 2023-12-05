@@ -4,3 +4,6 @@ tmp*
 a.out
 cmm
 build
+*.png
+*.dot
+.cache

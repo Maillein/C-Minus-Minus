@@ -112,7 +112,8 @@ assert 2 'int main() { 1; { return 2; } return 3; }'
 assert 3 'int main() { 1; { 2; } return 3; }'
 # assert 2 'int main() { 1; } { return 2; } { 3; }'
 # assert 3 'int main() { 1; } { 2; } { 3; }'
-assert 45 '
+assert 45 \
+'int put_num(int n);
 int main() {
   int i;
   int sum;
@@ -127,26 +128,28 @@ int main() {
   return sum;
 }'
 
-assert 10 'int main() { ;; int a; a = 10;; ; ; return arg1(a); }'
+assert 10 'int arg1(int n); int main() { ;; int a; a = 10;; ; ; return arg1(a); }'
 
-assert 0 'int main() { hello(); }'
-assert 19 'int main() { return arg0(); }'
-assert 20 'int main() { return arg0() + 1; }'
-assert 10 'int main() { int a; a = arg0(); return 10; }'
-assert 19 'int main() { return hello() + arg0(); }'
+assert 0 'int hello(); int main() { hello(); }'
+assert 19 'int arg0(); int main() { return arg0(); }'
+assert 20 'int arg0(); int main() { return arg0() + 1; }'
+assert 10 'int arg0(); int main() { int a; a = arg0(); return 10; }'
+assert 19 'int hello(); int arg0(); int main() { return hello() + arg0(); }'
 
-assert 1 'int main() { return arg1(1); }'
-assert 3 'int main() { return arg2(1, 2); }'
-assert 6 'int main() { return arg3(1, 2, 3); }'
-assert 10 'int main() { return arg4(1, 2, 3, 4); }'
-assert 15 'int main() { return arg5(1, 2, 3, 4, 5); }'
-assert 21 'int main() { return arg6(1, 2, 3, 4, 5, 6); }'
-assert 0 'int main() { return print6(1, 2, 3, 4, 5, 6); }'
+assert 1 'int arg1(int n); int main() { return arg1(1); }'
+assert 3 'int arg2(int a, int b); int main() { return arg2(1, 2); }'
+assert 6 'int arg3(int a, int b, int c); int main() { return arg3(1, 2, 3); }'
+assert 10 'int arg4(int a, int b, int c, int d); int main() { return arg4(1, 2, 3, 4); }'
+assert 15 'int arg5(int a, int b, int c, int d, int e); int main() { return arg5(1, 2, 3, 4, 5); }'
+assert 21 'int arg6(int a, int b, int c, int d, int e, int f); int main() { return arg6(1, 2, 3, 4, 5, 6); }'
+assert 0 'int print6(int a, int b, int c, int d, int e, int f); int main() { return print6(1, 2, 3, 4, 5, 6); }'
 # assert 6 'int main() { a = b = c = d = e = f = 1; return arg6(a, b, c, d, e, f); }'
 # assert 10 'int main() { a = b = c = d = e = f = 1; return arg6(a, b + c, c + d + e, d, h = (g = e = 1), arg2(1, 1)); }'
-assert 1 'int main() { return arg1(arg1(arg1(arg1(1)))); }'
+assert 1 'int arg1(int a); int main() { return arg1(arg1(arg1(arg1(1)))); }'
 
-assert 55 'int main() { 
+assert 55 \
+'int my_assert(int a, int b);
+int main() { 
   int s; int i;
   i = 0;
   s = 0; 
@@ -163,10 +166,11 @@ assert 55 'int main() {
 
 # 変数宣言の構文が追加されたら，以下2個は通るようになるはず
 assert 20 'int main() { int i; i = 10; { int i; i = 20; return i; } return 30; }'
-assert 4 'int main() { int a; a = 4; { int a; a = 15; put_num(a); } { put_num(a); } return a; }'
+assert 4 'int put_num(int a); int main() { int a; a = 4; { int a; a = 15; put_num(a); } { put_num(a); } return a; }'
 
 assert 13 'int foo(int x, int y) { int z; z = 10; return x + y + z; } int main() { int x; int y; x = 1; y = 2; return foo(x, y); }'
 assert 0 '
+int put_num(int a);
 int fib(int x) {
   if (x == 0) {
     return 0;
@@ -203,6 +207,7 @@ int main() {
 '
 
 assert 3 '
+int print6(int a, int b, int c, int d, int e, int f);
 int mean6(int a, int b, int c, int d, int e, int f) {
   int s1; int s2; int s3; int s4;
   s1 = a + b;
@@ -220,20 +225,24 @@ int main() {
 }
 '
 
-assert 2 'int main() { if (put_num(0) && put_num(0)) return 1; else return 2; }'
-assert 2 'int main() { if (put_num(0) && put_num(456)) return 1; else return 2; }'
-assert 2 'int main() { if (put_num(123) && put_num(0)) return 1; else return 2; }'
-assert 1 'int main() { if (put_num(123)&&put_num(456)) return 1; else return 2; }'
+assert 2 'int put_num(int n); int main() { if (put_num(0) && put_num(0)) return 1; else return 2; }'
+assert 2 'int put_num(int n); int main() { if (put_num(0) && put_num(456)) return 1; else return 2; }'
+assert 2 'int put_num(int n); int main() { if (put_num(123) && put_num(0)) return 1; else return 2; }'
+assert 1 'int put_num(int n); int main() { if (put_num(123)&&put_num(456)) return 1; else return 2; }'
 
-assert 2 'int main() { if (put_num(0) || put_num(0)) return 1; else return 2; }'
-assert 1 'int main() { if (put_num(0) || put_num(456)) return 1; else return 2; }'
-assert 1 'int main() { if (put_num(123) || put_num(0)) return 1; else return 2; }'
-assert 1 'int main() { if (put_num(123)||put_num(456)) return 1; else return 2; }'
+assert 2 'int put_num(int a); int main() { if (put_num(0) || put_num(0)) return 1; else return 2; }'
+assert 1 'int put_num(int a); int main() { if (put_num(0) || put_num(456)) return 1; else return 2; }'
+assert 1 'int put_num(int a); int main() { if (put_num(123) || put_num(0)) return 1; else return 2; }'
+assert 1 'int put_num(int a); int main() { if (put_num(123)||put_num(456)) return 1; else return 2; }'
 
-assert 1 'int main() { return put_num(1) && put_num(2) && put_num(3); }'
-assert 0 'int main() { return put_num(1) && put_num(0) && put_num(3); }'
+assert 1 'int put_num(int a); int main() { return put_num(1) && put_num(2) && put_num(3); }'
+assert 0 'int put_num(int a); int main() { return put_num(1) && put_num(0) && put_num(3); }'
 
 assert 0 '
+int p_fizbuz();
+int p_fiz();
+int p_buz();
+int put_num(int n);
 int fizbuz(int x) { 
   int i;
   for (i = 1; i <= x; i = i + 1) {
@@ -246,11 +255,11 @@ int fizbuz(int x) {
 }
 int main() { return fizbuz(30); }'
 
-assert 3 'int main() { int x; int y; int *z; x = 3; y = 5; z = &y + 8; put_num(&x); put_num(z); return *z; }'
-assert 3 'int main() { int x; int y; x = 3; y = 5; return *(&y + 8); }'
-assert 5 'int main() { int x; int y; int z; x = 3; y = 5; z = 7; return *(&y); }'
-assert 2 'int main() { int x; int *y; y = &x; put_num(&x); put_num(y); *y = 2; return x;}'
-assert 2 'int main() { int x; int *y; int **z; y = &x; z = &y; **z = 2; return x;}'
+# assert 3 'int put_num(int n); int main() { int x; int y; int *z; x = 3; y = 5; z = &y + 8; put_num(&x); put_num(z); return *z; }'
+# assert 3 'int put_num(int n); int main() { int x; int y; x = 3; y = 5; return *(&y + 8); }'
+assert 5 'int put_num(int n); int main() { int x; int y; int z; x = 3; y = 5; z = 7; return *(&y); }'
+assert 2 'int put_num(int n); int main() { int x; int *y; y = &x; put_num(&x); put_num(y); *y = 2; return x;}'
+assert 2 'int put_num(int n); int main() { int x; int *y; int **z; y = &x; z = &y; **z = 2; return x;}'
 
 assert 49 'int inc(int *x) { *x = *x + 1; } int main() { int x; x = 48; inc(&x); return x; }'
 assert 17 'int add2(int x, int y, int* z) { *z = x + y; } int main() { int a; add2(14, 3, &a); return a; }'

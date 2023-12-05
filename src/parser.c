@@ -1,5 +1,7 @@
 #include "cmm.h"
+#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 void context_push(struct Context **head) {
   struct Context *context = calloc(1, sizeof(struct Context));
@@ -81,14 +83,8 @@ struct Node *new_node_for(struct Node *for_begin, struct Node *cond,
   return node;
 }
 
-struct Node *code[100];
+// struct Node *code[100];
 
-// 未宣言の変数かどうかの区別がまだない．そのため，
-// { a = 1; { a = 2; } }
-// をパースすると，"a = 2;"が
-//   - 初めのaに2を代入
-//   - 新たな変数を定義して2を代入
-// の区別がつかない．
 struct LVar *find_lvar(struct Token **tok, struct Context **context) {
   for (struct Context *cur = *context; cur; cur = cur->next) {
     for (struct LVar *var = cur->locals; var; var = var->next) {
@@ -117,11 +113,111 @@ struct LVar *new_lvar(struct Token **tok, struct Context **context,
   return lvar;
 }
 
+struct LVar *find_function(struct Token **tok, struct Context **context) {
+  for (struct Context *cur = *context; cur; cur = cur->next) {
+    for (struct LVar *var = cur->functions; var; var = var->next) {
+      if (var->len == (*tok)->len &&
+          !memcmp((*tok)->str, var->name, (*tok)->len)) {
+        return var;
+      }
+    }
+  }
+  return NULL;
+}
+
+struct LVar *new_function(struct Token **tok, struct Context **context,
+                          struct Type *type) {
+  struct LVar *lvar = calloc(1, sizeof(struct LVar));
+  lvar->next = (*context)->functions;
+  lvar->name = calloc((*tok)->len + 1, sizeof(char));
+  lvar->len = (*tok)->len;
+  memcpy(lvar->name, (*tok)->str, lvar->len);
+  lvar->type = type;
+  (*context)->functions = lvar;
+  return lvar;
+}
+
 struct Type *new_type(enum TypeKind kind, struct Type *ptr_to) {
   struct Type *type = calloc(1, sizeof(struct Type));
   type->kind = kind;
   type->ptr_to = ptr_to;
   return type;
+}
+
+struct Type *solve_node_type(struct Node *node) {
+  if (node == NULL) {
+    return NULL;
+  }
+
+  if (node->type) {
+    return node->type;
+  }
+  switch (node->kind) {
+  case ND_ADD:
+  case ND_SUB:
+  case ND_MUL:
+  case ND_DIV:
+  case ND_MOD:
+  case ND_EQ:
+  case ND_NE:
+  case ND_LT:
+  case ND_LE:
+  case ND_OR:
+  case ND_AND:
+  case ND_ASSIGN: {
+    struct Type *type_r = solve_node_type(node->rhs);
+    struct Type *type_l = solve_node_type(node->lhs);
+    assert(type_r->kind == type_l->kind);
+    return node->type = type_r;
+  }
+  case ND_NUM:
+  case ND_LVAR:
+  case ND_FUNC_CALL:
+    return node->type;
+  case ND_RETURN:
+    solve_node_type(node->lhs);
+    return NULL;
+  case ND_IF:
+    solve_node_type(node->cond);
+    solve_node_type(node->stmt1);
+    solve_node_type(node->stmt2);
+    return NULL;
+  case ND_WHILE:
+    solve_node_type(node->cond);
+    solve_node_type(node->stmt1);
+    return NULL;
+  case ND_FOR:
+    solve_node_type(node->init);
+    solve_node_type(node->cond);
+    solve_node_type(node->update);
+    solve_node_type(node->stmt1);
+    return NULL;
+  case ND_BLOCK:
+    for (; node; node = node->rhs) {
+      solve_node_type(node->lhs);
+    }
+    return NULL;
+  case ND_FUNC_DEF:
+    solve_node_type(node->rhs);
+    return NULL;
+  case ND_ADDR:
+    node->type = calloc(1, sizeof(struct Type));
+    node->type->kind = PTR;
+    node->type->ptr_to = solve_node_type(node->lhs);
+    return node->type;
+  case ND_DEREF:
+    if (node->lhs->type == NULL) {
+      solve_node_type(node->lhs);
+    } 
+    return node->type = node->lhs->type->ptr_to;
+  case ND_PROGRAM:
+  case ND_FUNC_ARG:
+  case ND_EMPTY:
+  case ND_VAR_DEF:
+    return NULL;
+  }
+
+  return NULL;
 }
 
 struct Node *func_definition(struct Token **tok, struct Context **context);
@@ -138,20 +234,27 @@ struct Node *var_delaration(struct Token **tok, struct Context **context);
 
 // program = func_definition*
 struct Node *parse(struct Token **tok) {
-  struct Node *head = new_node(ND_PROGRAM);
-  struct Node **tail = &head;
+  // struct Node *head = new_node(ND_PROGRAM);
+  // struct Node **tail = &head;
+  // while (!at_eof(tok)) {
+  //   (*tail)->rhs = new_node(ND_PROGRAM);
+  //   tail = &(*tail)->rhs;
+  //   struct Context *cont_head = calloc(1, sizeof(struct Context));
+  //   struct Context **context = &cont_head;
+  //   (*tail)->lhs = func_definition(tok, context);
+  // }
+  // return head->rhs;
+  struct Node *node = new_node(ND_PROGRAM);
+  struct Context *context = calloc(1, sizeof(struct Context));
+  struct Node *cur = node;
   while (!at_eof(tok)) {
-    (*tail)->rhs = new_node(ND_PROGRAM);
-    tail = &(*tail)->rhs;
-    struct Context *cont_head = calloc(1, sizeof(struct Context));
-    struct Context **context = &cont_head;
-    (*tail)->lhs = func_definition(tok, context);
+    cur = cur->rhs = new_node(ND_PROGRAM);
+    cur->lhs = func_definition(tok, &context);
   }
-  return head->rhs;
+  return node->rhs;
 }
 
-// func_definition = "int" ident "(" ( "int" ident ( "," "int" ident )* )? ")"
-// "{" stmt* "}"
+// func_definition = "int" ident "(" ( "int" ident ( "," "int" ident )* )? ")" ( ";" | "{" stmt* "}" )
 struct Node *func_definition(struct Token **tok, struct Context **context) {
   *tok = skip(tok, "int"); // 関数の返り値は必ずint
   // 関数名をパース
@@ -162,6 +265,9 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
   node->kind = ND_FUNC_DEF;
   node->func_name = calloc((*tok)->len + 1, sizeof(char));
   memcpy(node->func_name, (*tok)->str, (*tok)->len);
+  struct Type *type = calloc(1, sizeof(struct Type));
+  type->kind = INT;
+  new_function(tok, context, type);
   consume(tok, TK_IDENT);
 
   // 関数の引数をパース
@@ -174,6 +280,12 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
     if (check(tok, ",")) {
       *tok = skip(tok, ",");
     }
+  }
+
+  if (equal(tok, ";")) {
+    context_pop(context);
+    node->stack_size = (*context)->max_local_offset;
+    return node;
   }
 
   // 関数の本体をパース
@@ -259,7 +371,9 @@ struct Node *stmt(struct Token **tok, struct Context **context) {
     return head.rhs;
   }
   if (check(tok, "int")) {
-    return var_delaration(tok, context);
+    struct Node *node = var_delaration(tok, context);
+    *tok = skip(tok, ";");
+    return node;
   }
   if (equal(tok, ";")) {
     return new_node(ND_EMPTY);
@@ -365,7 +479,8 @@ struct Node *unary(struct Token **tok, struct Context **context) {
   if (equal(tok, "+")) {
     return primary(tok, context);
   } else if (equal(tok, "-")) {
-    return new_node_binary(ND_SUB, new_node_num(0, new_type(INT, NULL)), primary(tok, context));
+    return new_node_binary(ND_SUB, new_node_num(0, new_type(INT, NULL)),
+                           primary(tok, context));
   } else if (equal(tok, "&")) {
     return new_node_unary(ND_ADDR, unary(tok, context));
   } else if (equal(tok, "*")) {
@@ -389,6 +504,12 @@ struct Node *primary(struct Token **tok, struct Context **context) {
       struct Node *node = new_node_binary(ND_FUNC_CALL, NULL, NULL);
       node->func_name = calloc((*tok)->len + 1, sizeof(char));
       memcpy(node->func_name, (*tok)->str, (*tok)->len * sizeof(char));
+      struct LVar *func = find_function(tok, context);
+      if (func == NULL) {
+        error_at((*tok)->str, "未定義の関数です");
+      } else {
+        node->type = func->type;
+      }
       consume(tok, TK_IDENT);
 
       // 引数をパース

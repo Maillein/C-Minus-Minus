@@ -1,4 +1,8 @@
 #include "cmm.h"
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // エラーを報告するための関数
@@ -26,7 +30,8 @@ void error_at(char *loc, char *fmt, ...) {
 
 // トークンの文字列が期待しているものと等しいとき，1個読み進める．
 bool equal(struct Token **tok, char *op) {
-  if (strlen(op) == (*tok)->len && memcmp((*tok)->str, op, (*tok)->len) == 0) {
+  if (strlen(op) == (size_t)(*tok)->len &&
+      memcmp((*tok)->str, op, (*tok)->len) == 0) {
     *tok = (*tok)->next;
     return true;
   }
@@ -35,7 +40,8 @@ bool equal(struct Token **tok, char *op) {
 
 // トークンの文字列が期待しているものと等しいか？
 bool check(struct Token **tok, char *op) {
-  return strlen(op) == (*tok)->len && memcmp((*tok)->str, op, (*tok)->len) == 0;
+  return strlen(op) == (size_t)(*tok)->len &&
+         memcmp((*tok)->str, op, (*tok)->len) == 0;
 }
 
 // 次のトークンが期待している記号のときは，トークンを1個読み進める．

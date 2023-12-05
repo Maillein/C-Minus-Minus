@@ -8,4 +8,8 @@ test:
 clean:
 	-@rm -rf build
 
+ast: AST.png
+AST.png: AST.dot
+	dot -Tpng $< -o AST.png
+
 .PHONY: build test clean

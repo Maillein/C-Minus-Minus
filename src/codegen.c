@@ -30,6 +30,9 @@ void gen_lval(struct Node *node, char *reg) {
 // 「文」を生成する．assign, returnを除き，RAXに値を残さない．
 void gen_stmt(struct Node *node) {
   if (node->kind == ND_FUNC_DEF) {
+    if (node->rhs == NULL) { // 関数プロトタイプ宣言
+      return;
+    }
     label_func_name = node->func_name;
     printf(".global %s\n", label_func_name);
     printf("%s:\n", label_func_name);

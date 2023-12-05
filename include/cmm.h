@@ -1,10 +1,6 @@
 #pragma once
-#include <ctype.h>
-#include <stdarg.h>
+
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 //////////////////////
 // tokenizer.c
@@ -100,6 +96,7 @@ struct LVar {
 struct Context {
   struct Context *next;
   struct LVar *locals;
+  struct LVar *functions;
   int locals_offset;
   int max_local_offset;
 };
@@ -131,9 +128,15 @@ struct Node {
 extern struct Node *code[100];
 
 struct Node *parse(struct Token **tok);
+struct Type *solve_node_type(struct Node *node);
 
 //////////////////////
 // codegen.c
 //////////////////////
 
 void codegen(struct Node *node);
+
+//////////////////////
+// visualizer.c
+//////////////////////
+void vis_ast(struct Node *node);

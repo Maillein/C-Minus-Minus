@@ -1,4 +1,5 @@
 #include "cmm.h"
+#include <stdio.h>
 
 // ユーザの入力
 char *user_input;
@@ -14,6 +15,9 @@ int main(int argc, char **argv) {
   struct Token *token = tokenize();
   // 抽象構文木の生成
   struct Node *program = parse(&token);
+
+  // ASTの出力
+  vis_ast(program);
 
   // アセンブリの前半を出力
   printf(".intel_syntax noprefix\n");
