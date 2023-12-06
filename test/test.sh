@@ -263,5 +263,62 @@ assert 2 'int put_num(int n); int main() { int x; int *y; int **z; y = &x; z = &
 
 assert 49 'int inc(int *x) { *x = *x + 1; } int main() { int x; x = 48; inc(&x); return x; }'
 assert 17 'int add2(int x, int y, int* z) { *z = x + y; } int main() { int a; add2(14, 3, &a); return a; }'
+assert 8 \
+'
+int alloc4(int **p, int a, int b, int c, int d);
+int put_address(int *p);
+int my_assert(int n, int m);
+
+int main() {
+  int *p;
+  alloc4(&p, 1, 2, 4, 8);
+  put_address(p);
+  int *q;
+  q = p + 2;
+  my_assert(4, *q);
+  q = p + 3;
+  return *q;
+}
+'
+
+assert 8 \
+'
+int alloc_n(int **p, int n);
+int put_address(int *p);
+
+int main() {
+  int *p;
+  alloc_n(&p, 4);
+  *(p + 0) = 1;
+  *(p + 1) = 2;
+  *(p + 2) = 4;
+  *(p + 3) = 8;
+  put_address(p);
+  int *q;
+  q = p + 3;
+  return *q;
+}
+'
+
+assert 4 'int main() { int x; return sizeof(x); }'
+assert 8 'int main() { int *x; return sizeof(x); }'
+assert 4 'int main() { int *x; return sizeof(*x); }'
+
+assert 0 \
+'
+int my_assert(int expect, int num);
+int main() {
+  int x;
+  int *y;
+  my_assert(4, sizeof(x));
+  my_assert(8, sizeof(y));
+  my_assert(4, sizeof(x + 3));
+  my_assert(8, sizeof(y + 1));
+  my_assert(4, sizeof(*y));
+  my_assert(4, sizeof(1));
+  my_assert(4, sizeof(sizeof(1)));
+  return 0;
+}
+'
 
 echo OK

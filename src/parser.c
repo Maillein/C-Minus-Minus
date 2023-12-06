@@ -139,6 +139,14 @@ struct LVar *new_function(struct Token **tok, struct Context **context,
 struct Type *new_type(enum TypeKind kind, struct Type *ptr_to) {
   struct Type *type = calloc(1, sizeof(struct Type));
   type->kind = kind;
+  switch (kind) {
+  case INT:
+    type->size = 4;
+    break;
+  case PTR:
+    type->size = 8;
+    break;
+  }
   type->ptr_to = ptr_to;
   return type;
 }
@@ -157,7 +165,7 @@ struct Type *solve_node_type(struct Node *node) {
       return node->type = type_l;
     }
     assert(0 && "加減算の両辺の型が不正です");
-  }
+  } break;
   case ND_MUL:
   case ND_DIV:
   case ND_MOD:
@@ -476,6 +484,7 @@ struct Node *mul(struct Token **tok, struct Context **context) {
 }
 
 // unary = ( "+" | "-" )? primary
+//       | "sizeof" primary
 //       | "&" unary
 //       | "*" unary
 struct Node *unary(struct Token **tok, struct Context **context) {
@@ -488,6 +497,10 @@ struct Node *unary(struct Token **tok, struct Context **context) {
     return new_node_unary(ND_ADDR, unary(tok, context));
   } else if (equal(tok, "*")) {
     return new_node_unary(ND_DEREF, unary(tok, context));
+  } else if (equal(tok, "sizeof")) {
+    struct Node *node = primary(tok, context);
+    solve_node_type(node);
+    return new_node_num(node->type->size, new_type(INT, NULL));
   } else {
     return primary(tok, context);
   }

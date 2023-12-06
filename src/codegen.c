@@ -88,7 +88,7 @@ void compare_register_and_imm(char *dst[4], long imm, struct Type *type) {
 // アドレスをrdiレジスタに生成しているのはまずいかも?
 void gen_lval(struct Node *node, char *reg[4]) {
   if (node->kind == ND_LVAR) {
-    printf("  lea %s, [rbp-%d]\n", reg[3], node->lvar->offset);
+    printf("  lea %s, [rbp-%d] # address of %s\n", reg[3], node->lvar->offset, node->lvar->name);
     return;
   }
   if (node->kind == ND_DEREF) {

@@ -8,11 +8,12 @@
 
 // トークンの種類
 enum TokenKind {
-  TK_OP,    // 記号
-  TK_IDENT, // 識別子
-  TK_NUM,   // 整数トークン
-  TK_KEYWD, // 予約語
-  TK_EOF,   // 入力の終わりを表すトークン
+  TK_OP,     // 記号
+  TK_SIZEOF, // sizeof
+  TK_IDENT,  // 識別子
+  TK_NUM,    // 整数トークン
+  TK_KEYWD,  // 予約語
+  TK_EOF,    // 入力の終わりを表すトークン
 };
 
 // トークン型

@@ -6,7 +6,8 @@ int my_assert(int expect, int num) {
     printf("expect: %d, actual: %d\n", expect, num);
     exit(1);
   }
-  return 0;
+  printf("Check OK!\n");
+  return num;
 }
 
 int arg0() {
@@ -64,5 +65,26 @@ int put_num(long num) {
 
 int print6(int a, int b, int c, int d, int e, int f) {
   printf("a: %d, b: %d, c: %d, d: %d, e: %d, f: %d\n", a, b, c, d, e, f);
+  return 0;
+}
+
+int put_address(int *p) {
+  printf("address = %p\n", p);
+  return 0;
+}
+
+int alloc4(int **p, int a, int b, int c, int d) {
+  *p = calloc(4, sizeof(int));
+  put_address(*p);
+  *(*p + 0) = a;
+  *(*p + 1) = b;
+  *(*p + 2) = c;
+  *(*p + 3) = d;
+  return 0;
+}
+
+int alloc_n(int **p, int n) {
+  *p = calloc(n, sizeof(int));
+  put_address(*p);
   return 0;
 }

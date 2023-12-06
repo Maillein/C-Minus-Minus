@@ -114,6 +114,12 @@ struct Token *tokenize() {
       continue;
     }
 
+    if (is_keyword(p, "sizeof", 6)) {
+      cur = new_token(TK_SIZEOF, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (is_keyword(p, "return", 6)) {
       cur = new_token(TK_KEYWD, cur, p, 6);
       p += 6;
