@@ -7,6 +7,7 @@ test:
 
 clean:
 	-@rm -rf build
+	-@rm AST.dot AST.png
 
 ast: AST.png
 AST.png: AST.dot

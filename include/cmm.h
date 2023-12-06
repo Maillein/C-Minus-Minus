@@ -81,6 +81,7 @@ enum TypeKind {
 // 式の型
 struct Type {
   enum TypeKind kind;
+  int size;
   struct Type *ptr_to;
 };
 

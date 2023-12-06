@@ -83,8 +83,6 @@ struct Node *new_node_for(struct Node *for_begin, struct Node *cond,
   return node;
 }
 
-// struct Node *code[100];
-
 struct LVar *find_lvar(struct Token **tok, struct Context **context) {
   for (struct Context *cur = *context; cur; cur = cur->next) {
     for (struct LVar *var = cur->locals; var; var = var->next) {
@@ -104,8 +102,9 @@ struct LVar *new_lvar(struct Token **tok, struct Context **context,
   lvar->name = calloc((*tok)->len + 1, sizeof(char));
   lvar->len = (*tok)->len;
   memcpy(lvar->name, (*tok)->str, lvar->len);
-  lvar->offset = (*context)->locals_offset = (*context)->locals_offset + 8;
   lvar->type = type;
+  lvar->offset = (*context)->locals_offset =
+      (*context)->locals_offset + type->size;
   if ((*context)->max_local_offset < (*context)->locals_offset) {
     (*context)->max_local_offset = (*context)->locals_offset;
   }
@@ -149,12 +148,16 @@ struct Type *solve_node_type(struct Node *node) {
     return NULL;
   }
 
-  if (node->type) {
-    return node->type;
-  }
   switch (node->kind) {
   case ND_ADD:
-  case ND_SUB:
+  case ND_SUB: {
+    struct Type *type_l = solve_node_type(node->lhs);
+    struct Type *type_r = solve_node_type(node->rhs);
+    if (type_l->kind == type_r->kind || type_l->kind == PTR) {
+      return node->type = type_l;
+    }
+    assert(0 && "加減算の両辺の型が不正です");
+  }
   case ND_MUL:
   case ND_DIV:
   case ND_MOD:
@@ -165,15 +168,22 @@ struct Type *solve_node_type(struct Node *node) {
   case ND_OR:
   case ND_AND:
   case ND_ASSIGN: {
-    struct Type *type_r = solve_node_type(node->rhs);
     struct Type *type_l = solve_node_type(node->lhs);
-    assert(type_r->kind == type_l->kind);
-    return node->type = type_r;
+    struct Type *type_r = solve_node_type(node->rhs);
+    assert(type_l->kind == type_r->kind && "両辺の型が一致していません");
+    return node->type = type_l;
   }
   case ND_NUM:
   case ND_LVAR:
-  case ND_FUNC_CALL:
     return node->type;
+  case ND_FUNC_CALL: {
+    int nargs = 0;
+    for (struct Node *arg = node->args; arg && nargs <= 6; arg = arg->rhs) {
+      solve_node_type(arg);
+      nargs++;
+    }
+    return node->type;
+  }
   case ND_RETURN:
     solve_node_type(node->lhs);
     return NULL;
@@ -203,15 +213,17 @@ struct Type *solve_node_type(struct Node *node) {
   case ND_ADDR:
     node->type = calloc(1, sizeof(struct Type));
     node->type->kind = PTR;
+    node->type->size = 8;
     node->type->ptr_to = solve_node_type(node->lhs);
     return node->type;
   case ND_DEREF:
     if (node->lhs->type == NULL) {
       solve_node_type(node->lhs);
-    } 
+    }
     return node->type = node->lhs->type->ptr_to;
-  case ND_PROGRAM:
   case ND_FUNC_ARG:
+    return node->type = solve_node_type(node->lhs);
+  case ND_PROGRAM:
   case ND_EMPTY:
   case ND_VAR_DEF:
     return NULL;
@@ -234,16 +246,6 @@ struct Node *var_delaration(struct Token **tok, struct Context **context);
 
 // program = func_definition*
 struct Node *parse(struct Token **tok) {
-  // struct Node *head = new_node(ND_PROGRAM);
-  // struct Node **tail = &head;
-  // while (!at_eof(tok)) {
-  //   (*tail)->rhs = new_node(ND_PROGRAM);
-  //   tail = &(*tail)->rhs;
-  //   struct Context *cont_head = calloc(1, sizeof(struct Context));
-  //   struct Context **context = &cont_head;
-  //   (*tail)->lhs = func_definition(tok, context);
-  // }
-  // return head->rhs;
   struct Node *node = new_node(ND_PROGRAM);
   struct Context *context = calloc(1, sizeof(struct Context));
   struct Node *cur = node;
@@ -267,6 +269,7 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
   memcpy(node->func_name, (*tok)->str, (*tok)->len);
   struct Type *type = calloc(1, sizeof(struct Type));
   type->kind = INT;
+  type->size = 4;
   new_function(tok, context, type);
   consume(tok, TK_IDENT);
 
@@ -274,13 +277,13 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
   *tok = skip(tok, "(");
   context_push(context);
   while (!equal(tok, ")")) {
-    // *tok = skip(tok, "int"); // 引数は必ずint
     var_delaration(tok, context);
     node->nparams++;
     if (check(tok, ",")) {
       *tok = skip(tok, ",");
     }
   }
+  node->params = (*context)->locals;
 
   if (equal(tok, ";")) {
     context_pop(context);
@@ -546,10 +549,12 @@ struct Node *var_delaration(struct Token **tok, struct Context **context) {
   *tok = skip(tok, "int");
   struct Type *type = calloc(1, sizeof(struct Type));
   type->kind = INT;
+  type->size = 4;
   type->ptr_to = NULL;
   while (equal(tok, "*")) {
     struct Type *t = calloc(1, sizeof(struct Type));
     t->kind = PTR;
+    t->size = 8;
     t->ptr_to = type;
     type = t;
   }

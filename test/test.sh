@@ -169,8 +169,8 @@ assert 20 'int main() { int i; i = 10; { int i; i = 20; return i; } return 30; }
 assert 4 'int put_num(int a); int main() { int a; a = 4; { int a; a = 15; put_num(a); } { put_num(a); } return a; }'
 
 assert 13 'int foo(int x, int y) { int z; z = 10; return x + y + z; } int main() { int x; int y; x = 1; y = 2; return foo(x, y); }'
-assert 0 '
-int put_num(int a);
+assert 0 \
+'int put_num(int a);
 int fib(int x) {
   if (x == 0) {
     return 0;
@@ -186,8 +186,7 @@ int main() {
     put_num(fib(i));
   }
   return 0;
-}
-'
+}'
 
 assert 12 '
 int tarai(int x, int y, int z) {
@@ -255,8 +254,9 @@ int fizbuz(int x) {
 }
 int main() { return fizbuz(30); }'
 
-# assert 3 'int put_num(int n); int main() { int x; int y; int *z; x = 3; y = 5; z = &y + 8; put_num(&x); put_num(z); return *z; }'
-# assert 3 'int put_num(int n); int main() { int x; int y; x = 3; y = 5; return *(&y + 8); }'
+assert 3 'int put_num(int n); int main() { int x; int y; int *z; x = 3; y = 5; z = &y + 1; put_num(&x); put_num(z); return *z; }'
+assert 3 'int put_num(int n); int main() { int x; int y; int *z; int w; x = 3; y = 5; w = 1; z = &y + w; put_num(&x); put_num(z); return *z; }'
+assert 3 'int put_num(int n); int main() { int x; int y; x = 3; y = 5; return *(&y + 1); }'
 assert 5 'int put_num(int n); int main() { int x; int y; int z; x = 3; y = 5; z = 7; return *(&y); }'
 assert 2 'int put_num(int n); int main() { int x; int *y; y = &x; put_num(&x); put_num(y); *y = 2; return x;}'
 assert 2 'int put_num(int n); int main() { int x; int *y; int **z; y = &x; z = &y; **z = 2; return x;}'
