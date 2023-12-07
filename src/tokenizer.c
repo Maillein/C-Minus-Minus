@@ -5,6 +5,119 @@
 #include <stdlib.h>
 #include <string.h>
 
+char *TokenKind2str(enum TokenKind kind) {
+  switch (kind) {
+  case TK_EXCLA:
+    return "!";
+  case TK_DQUOTE:
+    return "\"";
+  case TK_HASH:
+    return "#";
+  case TK_DOLLER:
+    return "$";
+  case TK_PERCENT:
+    return "%";
+  case TK_AMP:
+    return "&";
+  case TK_DAMP:
+    return "&&";
+  case TK_SQUOTE:
+    return "'";
+  case TK_L_PAREN:
+    return "(";
+  case TK_R_PAREN:
+    return ")";
+  case TK_ASTER:
+    return "*";
+  case TK_PLUS:
+    return "+";
+  case TK_DPLUS:
+    return "++";
+  case TK_COMMA:
+    return ",";
+  case TK_MINUS:
+    return "-";
+  case TK_DMINUS:
+    return "--";
+  case TK_ALLOW:
+    return "->";
+  case TK_PERIOD:
+    return ".";
+  case TK_SLASH:
+    return "/";
+  case TK_DSLASH:
+    return "//";
+  case TK_SLA_AST:
+    return "/*";
+  case TK_AST_SLA:
+    return "*/";
+  case TK_COLON:
+    return ":";
+  case TK_SEMICOLON:
+    return ";";
+  case TK_EQUAL:
+    return "=";
+  case TK_DEQUAL:
+    return "==";
+  case TK_NEQUAL:
+    return "!=";
+  case TK_PLUSEQUAL:
+    return "+=";
+  case TK_MINUSEQUAL:
+    return "-=";
+  case TK_LT:
+    return "<";
+  case TK_LE:
+    return "<=";
+  case TK_GT:
+    return ">";
+  case TK_GE:
+    return "<=";
+  case TK_L_SBRACKET:
+    return "[";
+  case TK_R_SBRACKET:
+    return "]";
+  case TK_BACKSLASH:
+    return "\\";
+  case TK_CARET:
+    return "^";
+  case TK_L_CBRACKET:
+    return "{";
+  case TK_R_CBRACKET:
+    return "}";
+  case TK_VBAR:
+    return "|";
+  case TK_DVBAR:
+    return "||";
+  case TK_TILDE:
+    return "~";
+  case TK_USCORE:
+    return "_";
+  case TK_SIZEOF:
+    return "sizeof";
+  case TK_IF:
+    return "if";
+  case TK_ELSE:
+    return "else";
+  case TK_FOR:
+    return "for";
+  case TK_WHILE:
+    return "while";
+  case TK_RETURN:
+    return "return";
+  case TK_INT:
+    return "int";
+  case TK_IDENT:
+    return "Identifier";
+  case TK_INTEGER:
+    return "Integer";
+  case TK_EOF:
+    return "EOF";
+    break;
+  }
+  return "";
+}
+
 // エラーを報告するための関数
 void error(char *fmt, ...) {
   va_list ap;
@@ -28,33 +141,19 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
-// トークンの文字列が期待しているものと等しいとき，1個読み進める．
-bool equal(struct Token **tok, char *op) {
-  if (strlen(op) == (size_t)(*tok)->len &&
-      memcmp((*tok)->str, op, (*tok)->len) == 0) {
-    *tok = (*tok)->next;
-    return true;
-  }
-  return false;
-}
-
-// トークンの文字列が期待しているものと等しいか？
-bool check(struct Token **tok, char *op) {
-  return strlen(op) == (size_t)(*tok)->len &&
-         memcmp((*tok)->str, op, (*tok)->len) == 0;
-}
-
-// 次のトークンが期待している記号のときは，トークンを1個読み進める．
+// 次のトークンが期待しているkindのときは，トークンを1個読み進める．
 // それ以外の場合はエラーを報告する．
-struct Token *skip(struct Token **tok, char *op) {
-  if (!equal(tok, op)) {
-    error_at((*tok)->str, "'%s'ではありません", op);
+bool expect(struct Token **tok, enum TokenKind kind) {
+  if ((*tok)->kind != kind) {
+    error_at((*tok)->str, "'%s'ではありません", TokenKind2str(kind));
+    return false;
   }
-  return *tok;
+  *tok = (*tok)->next;
+  return true;
 }
 
-// 次のトークンの型がkindのときは，トークンを1個読み進めて
-// 真を返す．それ以外のときは偽を返す．
+// 次のトークンが期待しているkindのときは，トークンを1個読み進め真を返す．
+// それ以外のときは偽を返す．
 bool consume(struct Token **tok, enum TokenKind kind) {
   if ((*tok)->kind != kind) {
     return false;
@@ -100,58 +199,227 @@ struct Token *tokenize() {
       p++;
       continue;
     }
-
-    if (memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
-        memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||
-        memcmp(p, "||", 2) == 0 || memcmp(p, "&&", 2) == 0) {
-      cur = new_token(TK_OP, cur, p, 2);
+    if (memcmp(p, "<=", 2) == 0) {
+      cur = new_token(TK_LE, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, ">=", 2) == 0) {
+      cur = new_token(TK_GE, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "==", 2) == 0) {
+      cur = new_token(TK_DEQUAL, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "!=", 2) == 0) {
+      cur = new_token(TK_NEQUAL, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "+=", 2) == 0) {
+      cur = new_token(TK_PLUSEQUAL, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "-=", 2) == 0) {
+      cur = new_token(TK_MINUSEQUAL, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "&&", 2) == 0) {
+      cur = new_token(TK_DAMP, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "||", 2) == 0) {
+      cur = new_token(TK_DVBAR, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "++", 2) == 0) {
+      cur = new_token(TK_DPLUS, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "--", 2) == 0) {
+      cur = new_token(TK_DMINUS, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "->", 2) == 0) {
+      cur = new_token(TK_ALLOW, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "//", 2) == 0) {
+      cur = new_token(TK_DSLASH, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "/*", 2) == 0) {
+      cur = new_token(TK_SLA_AST, cur, p, 2);
+      p += 2;
+      continue;
+    }
+    if (memcmp(p, "*/", 2) == 0) {
+      cur = new_token(TK_AST_SLA, cur, p, 2);
       p += 2;
       continue;
     }
 
-    if (strchr(";+-*/%()<>={},&", *p)) {
-      cur = new_token(TK_OP, cur, p++, 1);
+    if (memcmp(p, "!", 1) == 0) {
+      cur = new_token(TK_EXCLA, cur, p++, 1);
       continue;
     }
+    if (memcmp(p, "\"", 1) == 0) {
+      cur = new_token(TK_DQUOTE, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "#", 1) == 0) {
+      cur = new_token(TK_HASH, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "$", 1) == 0) {
+      cur = new_token(TK_DOLLER, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "%", 1) == 0) {
+      cur = new_token(TK_PERCENT, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "&", 1) == 0) {
+      cur = new_token(TK_AMP, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "'", 1) == 0) {
+      cur = new_token(TK_SQUOTE, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "(", 1) == 0) {
+      cur = new_token(TK_L_PAREN, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, ")", 1) == 0) {
+      cur = new_token(TK_R_PAREN, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "*", 1) == 0) {
+      cur = new_token(TK_ASTER, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "+", 1) == 0) {
+      cur = new_token(TK_PLUS, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, ",", 1) == 0) {
+      cur = new_token(TK_COMMA, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "-", 1) == 0) {
+      cur = new_token(TK_MINUS, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, ".", 1) == 0) {
+      cur = new_token(TK_PERIOD, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "/", 1) == 0) {
+      cur = new_token(TK_SLASH, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, ":", 1) == 0) {
+      cur = new_token(TK_COLON, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, ";", 1) == 0) {
+      cur = new_token(TK_SEMICOLON, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "=", 1) == 0) {
+      cur = new_token(TK_EQUAL, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "<", 1) == 0) {
+      cur = new_token(TK_LT, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, ">", 1) == 0) {
+      cur = new_token(TK_GT, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "[", 1) == 0) {
+      cur = new_token(TK_L_SBRACKET, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "]", 1) == 0) {
+      cur = new_token(TK_R_SBRACKET, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "\\", 1) == 0) {
+      cur = new_token(TK_BACKSLASH, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "^", 1) == 0) {
+      cur = new_token(TK_CARET, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "{", 1) == 0) {
+      cur = new_token(TK_L_CBRACKET, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "}", 1) == 0) {
+      cur = new_token(TK_R_CBRACKET, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "|", 1) == 0) {
+      cur = new_token(TK_R_CBRACKET, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "~", 1) == 0) {
+      cur = new_token(TK_TILDE, cur, p++, 1);
+      continue;
+    }
+    if (memcmp(p, "_", 1) == 0) {
+      cur = new_token(TK_USCORE, cur, p++, 1);
+      continue;
+    }
+
 
     if (is_keyword(p, "sizeof", 6)) {
       cur = new_token(TK_SIZEOF, cur, p, 6);
       p += 6;
       continue;
     }
-
     if (is_keyword(p, "return", 6)) {
-      cur = new_token(TK_KEYWD, cur, p, 6);
+      cur = new_token(TK_RETURN, cur, p, 6);
       p += 6;
       continue;
     }
-
     if (is_keyword(p, "if", 2)) {
-      cur = new_token(TK_KEYWD, cur, p, 2);
+      cur = new_token(TK_IF, cur, p, 2);
       p += 2;
       continue;
     }
-
     if (is_keyword(p, "else", 4)) {
-      cur = new_token(TK_KEYWD, cur, p, 4);
+      cur = new_token(TK_ELSE, cur, p, 4);
       p += 4;
       continue;
     }
-
     if (is_keyword(p, "while", 5)) {
-      cur = new_token(TK_KEYWD, cur, p, 5);
+      cur = new_token(TK_WHILE, cur, p, 5);
       p += 5;
       continue;
     }
-
     if (is_keyword(p, "for", 3)) {
-      cur = new_token(TK_KEYWD, cur, p, 3);
+      cur = new_token(TK_FOR, cur, p, 3);
       p += 3;
       continue;
     }
-
     if (is_keyword(p, "int", 3)) {
-      cur = new_token(TK_KEYWD, cur, p, 3);
+      cur = new_token(TK_INT, cur, p, 3);
       p += 3;
       continue;
     }
@@ -166,7 +434,7 @@ struct Token *tokenize() {
     }
 
     if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p, 1);
+      cur = new_token(TK_INTEGER, cur, p, 1);
       char *old_p = p;
       cur->val = strtol(p, &p, 10);
       cur->len = (int)(p - old_p);

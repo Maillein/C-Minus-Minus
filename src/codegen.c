@@ -323,7 +323,7 @@ void gen_expr(struct Node *node) {
       break;
     case PTR:
       if (node->rhs->type->kind != PTR) {
-        printf("  imul %s, %d\n", RDI[3], node->lhs->type->ptr_to->size);
+        printf("  imul %s, %d\n", RDI[3], node->lhs->type->base->size);
       }
       printf("  add %s, %s\n", RAX[3], RDI[3]);
       break;
@@ -335,7 +335,7 @@ void gen_expr(struct Node *node) {
       break;
     case PTR:
       if (node->rhs->type->kind != PTR) {
-        printf("  imul %s, %d\n", RDI[3], node->lhs->type->ptr_to->size);
+        printf("  imul %s, %d\n", RDI[3], node->lhs->type->base->size);
       }
       printf("  sub %s, %s\n", RAX[3], RDI[3]);
       break;

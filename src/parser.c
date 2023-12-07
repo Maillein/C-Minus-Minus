@@ -1,5 +1,5 @@
 #include "cmm.h"
-#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -136,110 +136,6 @@ struct LVar *new_function(struct Token **tok, struct Context **context,
   return lvar;
 }
 
-struct Type *new_type(enum TypeKind kind, struct Type *ptr_to) {
-  struct Type *type = calloc(1, sizeof(struct Type));
-  type->kind = kind;
-  switch (kind) {
-  case INT:
-    type->size = 4;
-    break;
-  case PTR:
-    type->size = 8;
-    break;
-  }
-  type->ptr_to = ptr_to;
-  return type;
-}
-
-struct Type *solve_node_type(struct Node *node) {
-  if (node == NULL) {
-    return NULL;
-  }
-
-  switch (node->kind) {
-  case ND_ADD:
-  case ND_SUB: {
-    struct Type *type_l = solve_node_type(node->lhs);
-    struct Type *type_r = solve_node_type(node->rhs);
-    if (type_l->kind == type_r->kind || type_l->kind == PTR) {
-      return node->type = type_l;
-    }
-    assert(0 && "加減算の両辺の型が不正です");
-  } break;
-  case ND_MUL:
-  case ND_DIV:
-  case ND_MOD:
-  case ND_EQ:
-  case ND_NE:
-  case ND_LT:
-  case ND_LE:
-  case ND_OR:
-  case ND_AND:
-  case ND_ASSIGN: {
-    struct Type *type_l = solve_node_type(node->lhs);
-    struct Type *type_r = solve_node_type(node->rhs);
-    assert(type_l->kind == type_r->kind && "両辺の型が一致していません");
-    return node->type = type_l;
-  }
-  case ND_NUM:
-  case ND_LVAR:
-    return node->type;
-  case ND_FUNC_CALL: {
-    int nargs = 0;
-    for (struct Node *arg = node->args; arg && nargs <= 6; arg = arg->rhs) {
-      solve_node_type(arg);
-      nargs++;
-    }
-    return node->type;
-  }
-  case ND_RETURN:
-    solve_node_type(node->lhs);
-    return NULL;
-  case ND_IF:
-    solve_node_type(node->cond);
-    solve_node_type(node->stmt1);
-    solve_node_type(node->stmt2);
-    return NULL;
-  case ND_WHILE:
-    solve_node_type(node->cond);
-    solve_node_type(node->stmt1);
-    return NULL;
-  case ND_FOR:
-    solve_node_type(node->init);
-    solve_node_type(node->cond);
-    solve_node_type(node->update);
-    solve_node_type(node->stmt1);
-    return NULL;
-  case ND_BLOCK:
-    for (; node; node = node->rhs) {
-      solve_node_type(node->lhs);
-    }
-    return NULL;
-  case ND_FUNC_DEF:
-    solve_node_type(node->rhs);
-    return NULL;
-  case ND_ADDR:
-    node->type = calloc(1, sizeof(struct Type));
-    node->type->kind = PTR;
-    node->type->size = 8;
-    node->type->ptr_to = solve_node_type(node->lhs);
-    return node->type;
-  case ND_DEREF:
-    if (node->lhs->type == NULL) {
-      solve_node_type(node->lhs);
-    }
-    return node->type = node->lhs->type->ptr_to;
-  case ND_FUNC_ARG:
-    return node->type = solve_node_type(node->lhs);
-  case ND_PROGRAM:
-  case ND_EMPTY:
-  case ND_VAR_DEF:
-    return NULL;
-  }
-
-  return NULL;
-}
-
 struct Node *func_definition(struct Token **tok, struct Context **context);
 struct Node *stmt(struct Token **tok, struct Context **context);
 struct Node *expr(struct Token **tok, struct Context **context);
@@ -266,7 +162,7 @@ struct Node *parse(struct Token **tok) {
 
 // func_definition = "int" ident "(" ( "int" ident ( "," "int" ident )* )? ")" ( ";" | "{" stmt* "}" )
 struct Node *func_definition(struct Token **tok, struct Context **context) {
-  *tok = skip(tok, "int"); // 関数の返り値は必ずint
+  expect(tok, TK_INT); // 関数の返り値は必ずint
   // 関数名をパース
   if ((*tok)->kind != TK_IDENT) {
     error_at((*tok)->str, "関数定義ではありません．");
@@ -279,30 +175,28 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
   type->kind = INT;
   type->size = 4;
   new_function(tok, context, type);
-  consume(tok, TK_IDENT);
+  expect(tok, TK_IDENT);
 
   // 関数の引数をパース
-  *tok = skip(tok, "(");
   context_push(context);
-  while (!equal(tok, ")")) {
+  expect(tok, TK_L_PAREN);
+  while (!consume(tok, TK_R_PAREN)) {
     var_delaration(tok, context);
     node->nparams++;
-    if (check(tok, ",")) {
-      *tok = skip(tok, ",");
-    }
+    consume(tok, TK_COMMA);
   }
   node->params = (*context)->locals;
 
-  if (equal(tok, ";")) {
+  if (consume(tok, TK_SEMICOLON)) {
     context_pop(context);
     node->stack_size = (*context)->max_local_offset;
     return node;
   }
 
   // 関数の本体をパース
-  if (!check(tok, "{")) {
-    error_at((*tok)->str, "'{'ではありません．");
-  }
+  // if (!check(tok, "{")) {
+  //   error_at((*tok)->str, "'{'ではありません．");
+  // }
   node->rhs = stmt(tok, context);
 
   context_pop(context);
@@ -318,89 +212,99 @@ struct Node *func_definition(struct Token **tok, struct Context **context) {
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //      | var_delaration ";"
 struct Node *stmt(struct Token **tok, struct Context **context) {
-  if (equal(tok, "if")) {
+  if (consume(tok, TK_IF)) {
     struct Node *cond, *stmt1, *stmt2;
-    *tok = skip(tok, "(");
+    expect(tok, TK_L_PAREN);
     cond = expr(tok, context);
-    *tok = skip(tok, ")");
+    expect(tok, TK_R_PAREN);
     stmt1 = stmt(tok, context);
-    if (equal(tok, "else")) {
+    if (consume(tok, TK_ELSE)) {
       stmt2 = stmt(tok, context);
     } else {
       stmt2 = NULL;
     }
     return new_node_if(cond, stmt1, stmt2);
   }
-  if (equal(tok, "while")) {
+
+  if (consume(tok, TK_WHILE)) {
     struct Node *cond, *stmt1;
-    *tok = skip(tok, "(");
+    expect(tok, TK_L_PAREN);
     cond = expr(tok, context);
-    *tok = skip(tok, ")");
+    expect(tok, TK_R_PAREN);
     stmt1 = stmt(tok, context);
     return new_node_while(cond, stmt1);
   }
-  if (equal(tok, "for")) {
+
+  if (consume(tok, TK_FOR)) {
     context_push(context);
     struct Node *for_begin, *for_after, *cond, *stmt1;
-    *tok = skip(tok, "(");
-    if (equal(tok, ";")) {
+    expect(tok, TK_L_PAREN);
+    if (consume(tok, TK_SEMICOLON)) {
       for_begin = NULL;
     } else {
       for_begin = expr(tok, context);
-      *tok = skip(tok, ";");
+      expect(tok, TK_SEMICOLON);
     }
-    if (equal(tok, ";")) {
+
+    if (consume(tok, TK_SEMICOLON)) {
       cond = NULL;
     } else {
       cond = expr(tok, context);
-      *tok = skip(tok, ";");
+      expect(tok, TK_SEMICOLON);
     }
-    if (equal(tok, ")")) {
+
+    if (consume(tok, TK_R_PAREN)) {
       for_after = NULL;
     } else {
       for_after = expr(tok, context);
-      *tok = skip(tok, ")");
+      expect(tok, TK_R_PAREN);
     }
     stmt1 = stmt(tok, context);
     context_pop(context);
     return new_node_for(for_begin, cond, for_after, stmt1);
   }
-  if (equal(tok, "return")) {
+
+  if (consume(tok, TK_RETURN)) {
     struct Node *node = expr(tok, context);
-    *tok = skip(tok, ";");
+    expect(tok, TK_SEMICOLON);
     return new_node_unary(ND_RETURN, node);
   }
-  if (equal(tok, "{")) {
+
+  if (consume(tok, TK_L_CBRACKET)) {
     struct Node head;
     head.rhs = NULL;
     struct Node *cur = &head;
     context_push(context);
-    while (!equal(tok, "}")) {
+    while (!consume(tok, TK_R_CBRACKET)) {
       cur = cur->rhs = new_node_unary(ND_BLOCK, stmt(tok, context));
     }
     context_pop(context);
     return head.rhs;
   }
-  if (check(tok, "int")) {
+
+  if ((*tok)->kind == TK_INT) {
     struct Node *node = var_delaration(tok, context);
-    *tok = skip(tok, ";");
+    expect(tok, TK_SEMICOLON);
     return node;
   }
-  if (equal(tok, ";")) {
-    return new_node(ND_EMPTY);
+
+  if (!consume(tok, TK_SEMICOLON)) {
+    struct Node *node = expr(tok, context);
+    expect(tok, TK_SEMICOLON);
+    return node;
   }
-  struct Node *node = expr(tok, context);
-  *tok = skip(tok, ";");
-  return node;
+
+  while (consume(tok, TK_SEMICOLON));
+  return new_node(ND_EMPTY); // unreachable
 }
 
 // expr = assign ( "==" assign | "&&" assign )*
 struct Node *expr(struct Token **tok, struct Context **context) {
   struct Node *node = assign(tok, context);
   for (;;) {
-    if (equal(tok, "||")) {
+    if (consume(tok, TK_DVBAR)) {
       node = new_node_binary(ND_OR, node, assign(tok, context));
-    } else if (equal(tok, "&&")) {
+    } else if (consume(tok, TK_DAMP)) {
       node = new_node_binary(ND_AND, node, assign(tok, context));
     } else {
       return node;
@@ -411,7 +315,7 @@ struct Node *expr(struct Token **tok, struct Context **context) {
 // assign  = equality ( "=" assign )?
 struct Node *assign(struct Token **tok, struct Context **context) {
   struct Node *node = equality(tok, context);
-  if (equal(tok, "=")) {
+  if (consume(tok, TK_EQUAL)) {
     node = new_node_binary(ND_ASSIGN, node, assign(tok, context));
   }
   return node;
@@ -422,9 +326,9 @@ struct Node *equality(struct Token **tok, struct Context **context) {
   struct Node *node = relational(tok, context);
 
   for (;;) {
-    if (equal(tok, "==")) {
+    if (consume(tok, TK_DEQUAL)) {
       node = new_node_binary(ND_EQ, node, relational(tok, context));
-    } else if (equal(tok, "!=")) {
+    } else if (consume(tok, TK_NEQUAL)) {
       node = new_node_binary(ND_NE, node, relational(tok, context));
     } else {
       return node;
@@ -437,13 +341,13 @@ struct Node *relational(struct Token **tok, struct Context **context) {
   struct Node *node = add(tok, context);
 
   for (;;) {
-    if (equal(tok, "<")) {
+    if (consume(tok, TK_LT)) {
       node = new_node_binary(ND_LT, node, add(tok, context));
-    } else if (equal(tok, "<=")) {
+    } else if (consume(tok, TK_LE)) {
       node = new_node_binary(ND_LE, node, add(tok, context));
-    } else if (equal(tok, ">")) {
+    } else if (consume(tok, TK_GT)) {
       node = new_node_binary(ND_LT, add(tok, context), node);
-    } else if (equal(tok, ">=")) {
+    } else if (consume(tok, TK_GE)) {
       node = new_node_binary(ND_LE, add(tok, context), node);
     } else {
       return node;
@@ -456,9 +360,9 @@ struct Node *add(struct Token **tok, struct Context **context) {
   struct Node *node = mul(tok, context);
 
   for (;;) {
-    if (equal(tok, "+")) {
+    if (consume(tok, TK_PLUS)) {
       node = new_node_binary(ND_ADD, node, mul(tok, context));
-    } else if (equal(tok, "-")) {
+    } else if (consume(tok, TK_MINUS)) {
       node = new_node_binary(ND_SUB, node, mul(tok, context));
     } else {
       return node;
@@ -471,11 +375,11 @@ struct Node *mul(struct Token **tok, struct Context **context) {
   struct Node *node = unary(tok, context);
 
   for (;;) {
-    if (equal(tok, "*")) {
+    if (consume(tok, TK_ASTER)) {
       node = new_node_binary(ND_MUL, node, unary(tok, context));
-    } else if (equal(tok, "/")) {
+    } else if (consume(tok, TK_SLASH)) {
       node = new_node_binary(ND_DIV, node, unary(tok, context));
-    } else if (equal(tok, "%")) {
+    } else if (consume(tok, TK_PERCENT)) {
       node = new_node_binary(ND_MOD, node, unary(tok, context));
     } else {
       return node;
@@ -488,19 +392,19 @@ struct Node *mul(struct Token **tok, struct Context **context) {
 //       | "&" unary
 //       | "*" unary
 struct Node *unary(struct Token **tok, struct Context **context) {
-  if (equal(tok, "+")) {
+  if (consume(tok, TK_PLUS)) {
     return primary(tok, context);
-  } else if (equal(tok, "-")) {
-    return new_node_binary(ND_SUB, new_node_num(0, new_type(INT, NULL)),
+  } else if (consume(tok, TK_MINUS)) {
+    return new_node_binary(ND_SUB, new_node_num(0, primitive_type(INT)),
                            primary(tok, context));
-  } else if (equal(tok, "&")) {
+  } else if (consume(tok, TK_AMP)) {
     return new_node_unary(ND_ADDR, unary(tok, context));
-  } else if (equal(tok, "*")) {
+  } else if (consume(tok, TK_ASTER)) {
     return new_node_unary(ND_DEREF, unary(tok, context));
-  } else if (equal(tok, "sizeof")) {
+  } else if (consume(tok, TK_SIZEOF)) {
     struct Node *node = primary(tok, context);
     solve_node_type(node);
-    return new_node_num(node->type->size, new_type(INT, NULL));
+    return new_node_num(node->type->size, primitive_type(INT));
   } else {
     return primary(tok, context);
   }
@@ -510,12 +414,12 @@ struct Node *unary(struct Token **tok, struct Context **context) {
 //         | ident ( "(" ( expr ( "," expr )* )? ")" )
 //         | "(" expr ")"
 struct Node *primary(struct Token **tok, struct Context **context) {
-  if (equal(tok, "(")) {
+  if (consume(tok, TK_L_PAREN)) {
     struct Node *node = expr(tok, context);
-    *tok = skip(tok, ")");
+    expect(tok, TK_R_PAREN);
     return node;
   } else if ((*tok)->kind == TK_IDENT) {
-    if (equal(&(*tok)->next, "(")) { // 関数呼び出しのパース
+    if ((*tok)->next->kind == TK_L_PAREN) { // 関数呼び出しのパース
       // 関数名をパース
       struct Node *node = new_node_binary(ND_FUNC_CALL, NULL, NULL);
       node->func_name = calloc((*tok)->len + 1, sizeof(char));
@@ -526,15 +430,16 @@ struct Node *primary(struct Token **tok, struct Context **context) {
       } else {
         node->type = func->type;
       }
-      consume(tok, TK_IDENT);
+      expect(tok, TK_IDENT);
+      expect(tok, TK_L_PAREN);
 
       // 引数をパース
       struct Node head;
       head.rhs = NULL;
       struct Node *cur = &head;
-      while (!equal(tok, ")")) {
+      while (!consume(tok, TK_R_PAREN)) {
         cur = cur->rhs = new_node_binary(ND_FUNC_ARG, expr(tok, context), NULL);
-        equal(tok, ",");
+        consume(tok, TK_COMMA);
       }
       node->args = head.rhs;
 
@@ -548,30 +453,27 @@ struct Node *primary(struct Token **tok, struct Context **context) {
       consume(tok, TK_IDENT);
       return new_node_var(lvar, lvar->type);
     }
-  } else if ((*tok)->kind == TK_NUM) {
-    struct Node *node = new_node_num((*tok)->val, new_type(INT, NULL));
-    consume(tok, TK_NUM);
+  } else if ((*tok)->kind == TK_INTEGER) {
+    struct Node *node = new_node_num((*tok)->val, primitive_type(INT));
+    expect(tok, TK_INTEGER);
     return node;
   }
 
-  error_at((*tok)->str, "予期しないトークンです: %s", (*tok)->str);
+  error_at((*tok)->str, "予期しないトークンです: %s", TokenKind2str((*tok)->kind));
   return NULL; // unreachable
 }
 
 struct Node *var_delaration(struct Token **tok, struct Context **context) {
-  *tok = skip(tok, "int");
-  struct Type *type = calloc(1, sizeof(struct Type));
-  type->kind = INT;
-  type->size = 4;
-  type->ptr_to = NULL;
-  while (equal(tok, "*")) {
+  expect(tok, TK_INT);
+  struct Type *type = primitive_type(INT);
+  while (consume(tok, TK_ASTER)) {
     struct Type *t = calloc(1, sizeof(struct Type));
     t->kind = PTR;
     t->size = 8;
-    t->ptr_to = type;
+    t->base = type;
     type = t;
   }
   new_lvar(tok, context, type);
-  consume(tok, TK_IDENT);
+  expect(tok, TK_IDENT);
   return new_node(ND_VAR_DEF);
 }

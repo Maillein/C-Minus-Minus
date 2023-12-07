@@ -2,18 +2,68 @@
 
 #include <stdbool.h>
 
+struct Type;
+struct Node;
+
 //////////////////////
 // tokenizer.c
 //////////////////////
 
 // トークンの種類
 enum TokenKind {
-  TK_OP,     // 記号
-  TK_SIZEOF, // sizeof
-  TK_IDENT,  // 識別子
-  TK_NUM,    // 整数トークン
-  TK_KEYWD,  // 予約語
-  TK_EOF,    // 入力の終わりを表すトークン
+  TK_EXCLA,      // !
+  TK_DQUOTE,     // "
+  TK_HASH,       // #
+  TK_DOLLER,     // $
+  TK_PERCENT,    // %
+  TK_AMP,        // &
+  TK_DAMP,       // &&
+  TK_SQUOTE,     // '
+  TK_L_PAREN,    // (
+  TK_R_PAREN,    // )
+  TK_ASTER,      // *
+  TK_PLUS,       // +
+  TK_DPLUS,      // ++
+  TK_COMMA,      // ,
+  TK_MINUS,      // -
+  TK_DMINUS,     // --
+  TK_ALLOW,      // ->
+  TK_PERIOD,     // .
+  TK_SLASH,      // /
+  TK_DSLASH,     // //
+  TK_SLA_AST,    // /*
+  TK_AST_SLA,    // */
+  TK_COLON,      // :
+  TK_SEMICOLON,  // ;
+  TK_EQUAL,      // =
+  TK_DEQUAL,     // ==
+  TK_NEQUAL,     // !=
+  TK_PLUSEQUAL,  // +=
+  TK_MINUSEQUAL, // -=
+  TK_LT,         // <
+  TK_LE,         // <=
+  TK_GT,         // >
+  TK_GE,         // >=
+  TK_L_SBRACKET, // [
+  TK_R_SBRACKET, // ]
+  TK_BACKSLASH,  // バックスラッシュ
+  TK_CARET,      // ^
+  TK_L_CBRACKET, // {
+  TK_R_CBRACKET, // }
+  TK_VBAR,       // |
+  TK_DVBAR,      // ||
+  TK_TILDE,      // ~
+  TK_USCORE,     // _
+  TK_SIZEOF,     // sizeof
+  TK_IF,         // if
+  TK_ELSE,       // else
+  TK_FOR,        // for
+  TK_WHILE,      // while
+  TK_RETURN,     // return
+  TK_INT,        // int
+  TK_IDENT,      // 識別子
+  TK_INTEGER,        // 整数トークン
+  TK_EOF,        // 入力の終わりを表すトークン
 };
 
 // トークン型
@@ -28,16 +78,38 @@ struct Token {
 // ユーザの入力
 extern char *user_input;
 
+char *TokenKind2str(enum TokenKind kind);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
-bool equal(struct Token **tok, char *op);
-bool check(struct Token **tok, char *op);
-struct Token *skip(struct Token **tok, char *op);
+// struct Token *skip(struct Token **tok, char *op);
 bool consume(struct Token **tok, enum TokenKind kind);
+bool expect(struct Token **tok, enum TokenKind kind);
 bool at_eof(struct Token **tok);
-struct Token *new_token(enum TokenKind kind, struct Token *cur, char *str,
-                        int len);
 struct Token *tokenize();
+
+//////////////////////
+// type.c
+//////////////////////
+
+enum TypeKind {
+  INT,
+  PTR,
+  // ARRAY,
+};
+
+// 式の型
+struct Type {
+  enum TypeKind kind; // トークンの種類
+  int size;           // sizeofの計算に使用
+  struct Type *base;  // ポインタ型や配列型で使用
+  struct Token *name; // 変数宣言で使用
+  int array_length;   // 配列の長さ
+};
+
+struct Type *primitive_type(enum TypeKind kind);
+struct Type *pointer_to(struct Type *base);
+// struct Type *array_of(struct Type *base, int array_length);
+struct Type *solve_node_type(struct Node *node);
 
 //////////////////////
 // parser.c
@@ -72,18 +144,6 @@ enum NodeKind {
   ND_ADDR,      // アドレス演算
   ND_DEREF,     // 参照
   ND_VAR_DEF,   // 変数定義
-};
-
-enum TypeKind {
-  INT,
-  PTR,
-};
-
-// 式の型
-struct Type {
-  enum TypeKind kind;
-  int size;
-  struct Type *ptr_to;
 };
 
 // ローカル変数の情報
