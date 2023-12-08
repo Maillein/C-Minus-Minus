@@ -19,15 +19,15 @@ static char *R8[4] = {"r8b", "r8w", "r8d", "r8"};
 static char *R9[4] = {"r9b", "r9w", "r9d", "r9"};
 static char **FUNC_REG[6] = {RDI, RSI, RDX, RCX, R8, R9};
 
-void gen_stmt(struct Node *node);
-void gen_expr(struct Node *node);
+void gen_stmt(struct ASTNode *node);
+void gen_expr(struct ASTNode *node);
 
 void move_imm_to_register(char **dst, long imm, struct Type *type) {
   switch (type->kind) {
-  case INT:
+  case TY_INT:
     printf("  mov %s, %ld\n", dst[2], imm);
     break;
-  case PTR:
+  case TY_PTR:
     assert(0);
     break;
   }
@@ -35,10 +35,10 @@ void move_imm_to_register(char **dst, long imm, struct Type *type) {
 
 void move_register_to_memory(char *dst[4], char *src[4], struct Type *type) {
   switch (type->kind) {
-  case INT:
+  case TY_INT:
     printf("  mov DWORD PTR [%s], %s\n", dst[3], src[2]);
     break;
-  case PTR:
+  case TY_PTR:
     printf("  mov QWORD PTR [%s], %s\n", dst[3], src[3]);
     break;
   }
@@ -46,10 +46,10 @@ void move_register_to_memory(char *dst[4], char *src[4], struct Type *type) {
 
 void move_memory_to_register(char *dst[4], char *src[4], struct Type *type) {
   switch (type->kind) {
-  case INT:
+  case TY_INT:
     printf("  mov %s, DWORD PTR [%s]\n", dst[2], src[3]);
     break;
-  case PTR:
+  case TY_PTR:
     printf("  mov %s, QWORD PTR [%s]\n", dst[3], src[3]);
     break;
   }
@@ -57,10 +57,10 @@ void move_memory_to_register(char *dst[4], char *src[4], struct Type *type) {
 
 void move_register_to_register(char *dst[4], char *src[4], struct Type *type) {
   switch (type->kind) {
-  case INT:
+  case TY_INT:
     printf("  mov %s, %s\n", dst[2], src[2]);
     break;
-  case PTR:
+  case TY_PTR:
     printf("  mov %s, %s\n", dst[3], src[3]);
     break;
   }
@@ -76,19 +76,20 @@ void pop_memory(char *dst[4]) { printf("  pop [%s]\n", dst[3]); }
 
 void compare_register_and_imm(char *dst[4], long imm, struct Type *type) {
   switch (type->kind) {
-  case INT:
+  case TY_INT:
     printf("  cmp  %s, %ld\n", dst[3], imm);
     break;
-  case PTR:
+  case TY_PTR:
     printf("  cmp  %s, %ld\n", dst[4], imm);
     break;
   }
 }
 
 // アドレスをrdiレジスタに生成しているのはまずいかも?
-void gen_lval(struct Node *node, char *reg[4]) {
+void gen_lval(struct ASTNode *node, char *reg[4]) {
   if (node->kind == ND_LVAR) {
-    printf("  lea %s, [rbp-%d] # address of %s\n", reg[3], node->lvar->offset, node->lvar->name);
+    printf("  lea %s, [rbp-%d] # address of %s\n", reg[3], node->lvar->offset,
+           node->lvar->name);
     return;
   }
   if (node->kind == ND_DEREF) {
@@ -102,52 +103,39 @@ void gen_lval(struct Node *node, char *reg[4]) {
 }
 
 // 「文」を生成する．assign, returnを除き，RAXに値を残さない．
-void gen_stmt(struct Node *node) {
+void gen_stmt(struct ASTNode *node) {
   if (node->kind == ND_FUNC_DEF) {
     if (node->rhs == NULL) { // 関数プロトタイプ宣言
       return;
     }
-    label_func_name = node->func_name;
+    label_func_name = node->func->name;
     printf(".global %s\n", label_func_name);
     printf("%s:\n", label_func_name);
 
     // プロローグ
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    if (node->stack_size % 16 != 0) {
-      node->stack_size += 16 - node->stack_size % 16; // ローカル変数のアライメント
+    if (node->stack_size > 0) {
+      printf("  sub rsp, %d\n", node->stack_size);
     }
-    printf("  sub rsp, %d\n",
-           node->stack_size); // ローカル変数の領域(16byte境界でアライメント)
-    int nparams = node->nparams - 1;
-    // total_offsetの計算開始
-    int total_offset = 0;
-    for (struct LVar *param = node->params; nparams >= 0; param = param->next) {
-      switch (param->type->kind) {
-      case INT:
-        total_offset += 4;
-        break;
-      case PTR:
-        total_offset += 8;
-        break;
-      }
-      nparams--;
-    }
-    // total_offsetの計算終了
 
-    nparams = node->nparams - 1;
-    for (struct LVar *param = node->params; nparams >= 0; param = param->next) {
-      switch (param->type->kind) {
-      case INT:
-        printf("  mov [rbp-%d], %s # %s\n", total_offset, FUNC_REG[nparams][2], param->name);
-        total_offset -= 4;
+    int nparam = 0;
+    for (struct Variable *v = node->params; nparam < node->nparams && v;
+         v = v->next, nparam++) {
+      switch (v->type->kind) {
+      case TY_INT:
+        printf("  mov DWORD PTR [rbp-%d], %s # %s\n", v->offset,
+               FUNC_REG[nparam][2], v->name);
         break;
-      case PTR:
-        printf("  mov [rbp-%d], %s # %s\n", total_offset, FUNC_REG[nparams][3], param->name);
-        total_offset -= 8;
+      case TY_PTR:
+        printf("  mov QWORD PTR [rbp-%d], %s # %s\n", v->offset,
+               FUNC_REG[nparam][3], v->name);
+        break;
+      case TY_ARRAY:
+      case TY_FUNCTION:
+        assert(0);
         break;
       }
-      nparams--;
     }
 
     gen_stmt(node->rhs);
@@ -156,6 +144,12 @@ void gen_stmt(struct Node *node) {
     printf(".L_%s_epilogue:\n", label_func_name);
     printf("  leave\n");
     printf("  ret\n");
+    return;
+  }
+  if (node->kind == ND_VAR_DEF) {
+    for (struct ASTNode *n = node; n && n->lhs; n = n->rhs) {
+      gen_expr(n->lhs);
+    }
     return;
   }
   if (node->kind == ND_ASSIGN) {
@@ -238,7 +232,7 @@ void gen_stmt(struct Node *node) {
 }
 
 // 「式」を生成する．評価結果はRAXレジスタに格納される．
-void gen_expr(struct Node *node) {
+void gen_expr(struct ASTNode *node) {
   if (node->kind == ND_NUM) {
     move_imm_to_register(RAX, node->val, node->type);
     return;
@@ -265,7 +259,7 @@ void gen_expr(struct Node *node) {
   }
   if (node->kind == ND_FUNC_CALL) {
     int nargs = 0;
-    for (struct Node *arg = node->args; arg && nargs <= 6; arg = arg->rhs) {
+    for (struct ASTNode *arg = node->args; arg && nargs <= 6; arg = arg->rhs) {
       gen_expr(arg->lhs);
       push_register(RAX);
       nargs++;
@@ -318,11 +312,11 @@ void gen_expr(struct Node *node) {
 
   if (node->kind == ND_ADD) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  add %s, %s\n", RAX[2], RDI[2]);
       break;
-    case PTR:
-      if (node->rhs->type->kind != PTR) {
+    case TY_PTR:
+      if (node->rhs->type->kind != TY_PTR) {
         printf("  imul %s, %d\n", RDI[3], node->lhs->type->base->size);
       }
       printf("  add %s, %s\n", RAX[3], RDI[3]);
@@ -330,11 +324,11 @@ void gen_expr(struct Node *node) {
     }
   } else if (node->kind == ND_SUB) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  sub %s, %s\n", RAX[2], RDI[2]);
       break;
-    case PTR:
-      if (node->rhs->type->kind != PTR) {
+    case TY_PTR:
+      if (node->rhs->type->kind != TY_PTR) {
         printf("  imul %s, %d\n", RDI[3], node->lhs->type->base->size);
       }
       printf("  sub %s, %s\n", RAX[3], RDI[3]);
@@ -342,45 +336,45 @@ void gen_expr(struct Node *node) {
     }
   } else if (node->kind == ND_MUL) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  imul %s, %s\n", RAX[2], RDI[2]);
       break;
-    case PTR:
+    case TY_PTR:
       // unreachable
       assert(0 && "ポインタ型同士の乗算");
       break;
     }
   } else if (node->kind == ND_DIV) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  cdq\n"); // rax, rdiならcqo
       printf("  idiv %s, %s\n", RAX[2], RDI[2]);
       break;
-    case PTR:
+    case TY_PTR:
       // unreachable
       assert(0 && "ポインタ型同士の除算");
       break;
     }
   } else if (node->kind == ND_MOD) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  cdq\n"); // rax, rdiならcqo
       printf("  idiv %s, %s\n", RAX[2], RDI[2]);
       printf("  mov  %s, %s\n", RAX[2], RDX[2]);
       break;
-    case PTR:
+    case TY_PTR:
       // unreachable
       assert(0 && "ポインタ型同士のmod演算");
       break;
     }
   } else if (node->kind == ND_EQ) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  cmp %s, %s\n", RAX[2], RDI[2]);
       printf("  sete al\n");
       printf("  movzx %s, al\n", RAX[2]);
       break;
-    case PTR:
+    case TY_PTR:
       printf("  cmp %s, %s\n", RAX[3], RDI[3]);
       printf("  sete al\n");
       printf("  movzx %s, al\n", RAX[3]);
@@ -388,12 +382,12 @@ void gen_expr(struct Node *node) {
     }
   } else if (node->kind == ND_NE) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  cmp %s, %s\n", RAX[2], RDI[2]);
       printf("  setne al\n");
       printf("  movzx %s, al\n", RAX[2]);
       break;
-    case PTR:
+    case TY_PTR:
       printf("  cmp %s, %s\n", RAX[3], RDI[3]);
       printf("  setne al\n");
       printf("  movzx %s, al\n", RAX[3]);
@@ -401,12 +395,12 @@ void gen_expr(struct Node *node) {
     }
   } else if (node->kind == ND_LT) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  cmp %s, %s\n", RAX[2], RDI[2]);
       printf("  setl al\n");
       printf("  movzx %s, al\n", RAX[2]);
       break;
-    case PTR:
+    case TY_PTR:
       printf("  cmp %s, %s\n", RAX[3], RDI[3]);
       printf("  setl al\n");
       printf("  movzx %s, al\n", RAX[3]);
@@ -414,12 +408,12 @@ void gen_expr(struct Node *node) {
     }
   } else if (node->kind == ND_LE) {
     switch (node->type->kind) {
-    case INT:
+    case TY_INT:
       printf("  cmp %s, %s\n", RAX[2], RDI[2]);
       printf("  setle al\n");
       printf("  movzx %s, al\n", RAX[2]);
       break;
-    case PTR:
+    case TY_PTR:
       printf("  cmp %s, %s\n", RAX[3], RDI[3]);
       printf("  setle al\n");
       printf("  movzx %s, al\n", RAX[3]);
@@ -428,7 +422,7 @@ void gen_expr(struct Node *node) {
   }
 }
 
-void codegen(struct Node *node) {
+void codegen(struct ASTNode *node) {
   for (; node; node = node->rhs) {
     gen_stmt(node->lhs);
   }

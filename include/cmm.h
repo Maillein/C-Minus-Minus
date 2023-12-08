@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 struct Type;
-struct Node;
+struct ASTNode;
 
 //////////////////////
 // tokenizer.c
@@ -62,7 +62,7 @@ enum TokenKind {
   TK_RETURN,     // return
   TK_INT,        // int
   TK_IDENT,      // 識別子
-  TK_INTEGER,        // 整数トークン
+  TK_INTEGER,    // 整数トークン
   TK_EOF,        // 入力の終わりを表すトークン
 };
 
@@ -92,9 +92,10 @@ struct Token *tokenize();
 //////////////////////
 
 enum TypeKind {
-  INT,
-  PTR,
-  // ARRAY,
+  TY_INT,
+  TY_PTR,
+  TY_ARRAY,
+  TY_FUNCTION,
 };
 
 // 式の型
@@ -102,17 +103,30 @@ struct Type {
   enum TypeKind kind; // トークンの種類
   int size;           // sizeofの計算に使用
   struct Type *base;  // ポインタ型や配列型で使用
-  struct Token *name; // 変数宣言で使用
-  int array_length;   // 配列の長さ
+
+  // 変数宣言で使用
+  struct Token *name;
+
+  // kind == ARRAY で使用
+  int array_length;
+
+  // kind == FUNC で使用
+  struct Type *return_type;
+  struct Type *param;
+  struct Type *next_param;
 };
 
 struct Type *primitive_type(enum TypeKind kind);
 struct Type *pointer_to(struct Type *base);
-// struct Type *array_of(struct Type *base, int array_length);
-struct Type *solve_node_type(struct Node *node);
+struct Type *array_of(struct Type *base, int array_length);
+struct Type *function_type(struct Type *return_type);
+
+struct Type *get_base_type(struct Type *type);
+int size_of_type(struct Type *type);
+struct Type *solve_node_type(struct ASTNode *node);
 
 //////////////////////
-// parser.c
+// node.c
 //////////////////////
 
 // 抽象構文木のノードの種類
@@ -146,59 +160,94 @@ enum NodeKind {
   ND_VAR_DEF,   // 変数定義
 };
 
-// ローカル変数の情報
-struct LVar {
-  struct LVar *next; // 次の変数
-  char *name;        // 変数名
-  int len;           // 変数名の長さ
-  int offset;        // RBPからのオフセット
-  struct Type *type; // 型
+// 抽象構文木のノード型
+struct ASTNode {
+  enum NodeKind kind;
+  struct ASTNode *lhs;
+  struct ASTNode *rhs;
+  int val;               // kind == ND_NUMのとき使用
+  struct Variable *lvar; // kind == ND_LVARのとき使用
+  struct Type *type;     // 型
+
+  struct ASTNode *init;   // kind == ND_FOR のとき使用．for文の初期化
+  struct ASTNode *update; // kind == ND_FOR のとき使用．for文の更新
+  struct ASTNode *cond;   // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
+  struct ASTNode *stmt1;  // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
+  struct ASTNode *stmt2;  // kind == ND_IFのとき使用
+
+  char *func_name;   // kind == ND_FUNC_CALL | ND_FUNC_DEF のとき使用
+  struct ASTNode *args; // kind == ND_FUNC_CALL のとき使用
+
+  int stack_size;          // kind == ND_FUNC_DEF のとき使用
+  int nparams;             // kind == ND_FUNC_DEF のとき使用
+  struct Function *func; // kind==ND_FUNC_DEF のとき使用
+  struct Variable *params; // kind==ND_FUNC_DEF のとき使用
+};
+
+struct ASTNode *new_node(enum NodeKind kind);
+struct ASTNode *new_node_binary(enum NodeKind kind, struct ASTNode *lhs,
+                             struct ASTNode *rhs);
+struct ASTNode *new_node_unary(enum NodeKind kind, struct ASTNode *lhs);
+struct ASTNode *new_node_var(struct Variable *lvar, struct Type *type);
+struct ASTNode *new_node_num(int val, struct Type *type);
+struct ASTNode *new_node_if(struct ASTNode *cond, struct ASTNode *stmt1,
+                         struct ASTNode *stmt2);
+struct ASTNode *new_node_while(struct ASTNode *cond, struct ASTNode *stmt1);
+struct ASTNode *new_node_for(struct ASTNode *for_begin, struct ASTNode *cond,
+                          struct ASTNode *for_after, struct ASTNode *stmt1);
+
+//////////////////////
+// parser.c
+//////////////////////
+
+// 変数の情報
+struct Variable {
+  struct Variable *prev; // 前の変数
+  struct Variable *next; // 次の変数
+  char *name;            // 変数名
+  int len;               // 変数名の長さ
+  int offset;            // RBPからのオフセット
+  struct Type *type;     // 型
+};
+
+struct Function {
+  struct Function *prev;
+  struct Function *next;
+  char *name; // 変数名
+  int len;    // 変数名の長さ
+  struct Type *return_type;
+  struct Type *params;
+};
+
+struct VarList {
+  struct Variable *head;
+  int len;
+};
+
+struct FuncList {
+  struct Function *head;
+  int len;
 };
 
 struct Context {
   struct Context *next;
-  struct LVar *locals;
-  struct LVar *functions;
+  struct VarList *locals;
+  struct VarList **globals;
+  struct FuncList **functions;
   int locals_offset;
   int max_local_offset;
 };
 
-// 抽象構文木のノード型
-struct Node {
-  enum NodeKind kind;
-  struct Node *lhs;
-  struct Node *rhs;
-  int val;           // kind == ND_NUMのとき使用
-  struct LVar *lvar; // kind == ND_LVARのとき使用
-  struct Type *type; // 型
-
-  struct Node *init;   // kind == ND_FOR のとき使用．for文の初期化
-  struct Node *update; // kind == ND_FOR のとき使用．for文の更新
-  struct Node *cond;   // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
-  struct Node *stmt1;  // kind == ND_IF | ND_WHILE | ND_FOR のとき使用
-  struct Node *stmt2;  // kind == ND_IFのとき使用
-
-  char *func_name;   // kind == ND_FUNC_CALL | ND_FUNC_DEF のとき使用
-  struct Node *args; // kind == ND_FUNC_CALL のとき使用
-
-  int stack_size;      // kind == ND_FUNC_DEF のとき使用
-  int nparams;         // kind == ND_FUNC_DEF のとき使用
-  struct LVar *params; // kind==ND_FUNC_DEF のとき使用
-};
-
-// プログラム全体
-extern struct Node *code[100];
-
-struct Node *parse(struct Token **tok);
-struct Type *solve_node_type(struct Node *node);
+struct ASTNode *parse(struct Token **tok);
+struct Type *solve_node_type(struct ASTNode *node);
 
 //////////////////////
 // codegen.c
 //////////////////////
 
-void codegen(struct Node *node);
+void codegen(struct ASTNode *node);
 
 //////////////////////
 // visualizer.c
 //////////////////////
-void vis_ast(struct Node *node);
+void vis_ast(struct ASTNode *node);

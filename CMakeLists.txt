@@ -7,6 +7,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra")
 add_executable(cmm src/main.c
                    src/codegen.c
                    src/type.c
+                   src/node.c
                    src/parser.c 
                    src/tokenizer.c
                    src/visualizer.c

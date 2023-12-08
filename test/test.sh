@@ -321,4 +321,48 @@ int main() {
 }
 '
 
+assert 7 'int main() { int a = 3, b = 4; return a + b; }'
+# assert 8 'int main() { int a[10]; *a = 8; return *a; }'
+# assert 0 \
+# '
+# int print6(int a, int b, int c, int d, int e, int f);
+# int main() {
+#   int a[6];
+#   *(a + 0) = 0;
+#   *(a + 1) = 1;
+#   *(a + 2) = 2;
+#   *(a + 3) = 4;
+#   *(a + 4) = 8;
+#   *(a + 5) = 16;
+#   print6(*a, *(a + 1), *(a + 2), *(a + 3), *(a + 4), *(a + 5));
+#   return 0;
+# }
+# '
+#
+# assert 3 'int main() { int x[2]; int *y=&x; *y=3; return *x; }'
+#
+# assert 3 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *x; }'
+# assert 4 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *(x+1); }'
+# assert 5 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *(x+2); }'
+#
+# assert 0 'int main() { int x[2][3]; int *y=x; *y=0; return **x; }'
+# assert 1 'int main() { int x[2][3]; int *y=x; *(y+1)=1; return *(*x+1); }'
+# assert 2 'int main() { int x[2][3]; int *y=x; *(y+2)=2; return *(*x+2); }'
+# assert 3 'int main() { int x[2][3]; int *y=x; *(y+3)=3; return **(x+1); }'
+# assert 4 'int main() { int x[2][3]; int *y=x; *(y+4)=4; return *(*(x+1)+1); }'
+# assert 5 'int main() { int x[2][3]; int *y=x; *(y+5)=5; return *(*(x+1)+2); }'
+#
+# assert 3 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *x; }'
+# assert 4 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+1); }'
+# assert 5 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+2); }'
+# assert 5 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+2); }'
+# assert 5 'int main() { int x[3]; *x=3; x[1]=4; 2[x]=5; return *(x+2); }'
+#
+# assert 0 'int main() { int x[2][3]; int *y=x; y[0]=0; return x[0][0]; }'
+# assert 1 'int main() { int x[2][3]; int *y=x; y[1]=1; return x[0][1]; }'
+# assert 2 'int main() { int x[2][3]; int *y=x; y[2]=2; return x[0][2]; }'
+# assert 3 'int main() { int x[2][3]; int *y=x; y[3]=3; return x[1][0]; }'
+# assert 4 'int main() { int x[2][3]; int *y=x; y[4]=4; return x[1][1]; }'
+# assert 5 'int main() { int x[2][3]; int *y=x; y[5]=5; return x[1][2]; }'
+
 echo OK

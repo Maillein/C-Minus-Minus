@@ -99,28 +99,34 @@ char *nodekind_to_str(enum NodeKind kind) {
 char *typekind_to_str(enum TypeKind kind) {
   char *ret;
   switch (kind) {
-  case INT:
+  case TY_INT:
     ret = "INT";
     break;
-  case PTR:
+  case TY_PTR:
     ret = "PTR";
+    break;
+  case TY_ARRAY:
+    ret = "ARRAY";
+    break;
+  case TY_FUNCTION:
+    ret = "FUNCTION";
     break;
   }
   return ret;
 }
 
-void vis_func_def(struct Node *node);
-void vis_stmt(struct Node *node, char *p_name);
-void vis_expr(struct Node *node, char *p_name);
+void vis_func_def(struct ASTNode *node);
+void vis_stmt(struct ASTNode *node, char *p_name);
+void vis_expr(struct ASTNode *node, char *p_name);
 
-void vis_program(struct Node *node) {
+void vis_program(struct ASTNode *node) {
   for (; node; node = node->rhs) {
     solve_node_type(node->lhs);
     vis_func_def(node->lhs);
   }
 }
 
-void vis_func_def(struct Node *node) {
+void vis_func_def(struct ASTNode *node) {
   char name[32];
   if (!node) {
     return;
@@ -134,7 +140,7 @@ void vis_func_def(struct Node *node) {
   fprintf(fp, "  }\n");
 }
 
-void vis_stmt(struct Node *node, char *p_name) {
+void vis_stmt(struct ASTNode *node, char *p_name) {
   char name[32];
   if (!node) {
     return;
@@ -177,7 +183,7 @@ void vis_stmt(struct Node *node, char *p_name) {
   }
 }
 
-void vis_expr(struct Node *node, char *p_name) {
+void vis_expr(struct ASTNode *node, char *p_name) {
   char name[32];
   if (!node) {
     return;
@@ -230,7 +236,7 @@ void vis_expr(struct Node *node, char *p_name) {
   return;
 }
 
-void vis_ast(struct Node *node) {
+void vis_ast(struct ASTNode *node) {
   fp = fopen("AST.dot", "w");
   if (fp == NULL) {
     fprintf(stderr, "AST.dotを開けませんでした．\n");

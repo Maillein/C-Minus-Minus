@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
   // トークナイズする
   struct Token *token = tokenize();
   // 抽象構文木の生成
-  struct Node *program = parse(&token);
+  struct ASTNode *program = parse(&token);
 
   // ASTの出力
   vis_ast(program);
